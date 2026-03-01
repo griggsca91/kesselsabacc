@@ -38,6 +38,21 @@ func main() {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
+	// Serve static frontend files in production (built assets in ./static)
+	if info, err := os.Stat("./static"); err == nil && info.IsDir() {
+		staticFS := http.FileServer(http.Dir("./static"))
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// Try to serve the file directly; fall back to index.html for SPA routing
+			path := "./static" + r.URL.Path
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				http.ServeFile(w, r, "./static/index.html")
+				return
+			}
+			staticFS.ServeHTTP(w, r)
+		})
+		log.Println("Serving static files from ./static")
+	}
+
 	// CORS middleware for local dev
 	corsMiddleware := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
