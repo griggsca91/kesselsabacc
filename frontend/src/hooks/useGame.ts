@@ -7,8 +7,8 @@ import type {
   ShiftToken,
 } from "../types";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
-const WS = import.meta.env.VITE_WS_URL || "ws://localhost:8080";
+const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
+const WS = import.meta.env.VITE_WS_URL ?? "ws://localhost:8080";
 
 const MAX_RECONNECT_ATTEMPTS = 10;
 const BASE_RECONNECT_DELAY_MS = 1000;
