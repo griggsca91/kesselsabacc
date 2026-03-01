@@ -6,14 +6,35 @@ import (
 	"net/http"
 	"os"
 	"sabacc/api"
+	"sabacc/db"
 	"sabacc/room"
 )
 
 func main() {
+	// --- Optional database initialization ---
+	var repo *db.Repository
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL != "" {
+		conn, err := db.Connect(databaseURL)
+		if err != nil {
+			log.Fatalf("Failed to connect to database: %v", err)
+		}
+		defer conn.Close()
+
+		if err := db.RunMigrations(conn); err != nil {
+			log.Fatalf("Failed to run migrations: %v", err)
+		}
+
+		repo = db.NewRepository(conn)
+		log.Println("Database initialized successfully")
+	} else {
+		log.Println("WARNING: DATABASE_URL not set — running without database persistence")
+	}
+
 	hub := room.NewHub()
 	go hub.Run()
 
-	handler := api.NewHandler(hub)
+	handler := api.NewHandler(hub, repo)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
