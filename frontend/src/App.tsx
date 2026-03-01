@@ -29,6 +29,7 @@ function App() {
         <Lobby
           onCreateRoom={createRoom}
           onJoinRoom={joinRoom}
+          playerId={playerId}
         />
       </>
     );

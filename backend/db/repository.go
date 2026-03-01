@@ -101,21 +101,19 @@ func (r *Repository) UpdateRoomStatus(ctx context.Context, code string, status s
 
 // SaveGameState upserts the current game state for a room. If a game record
 // already exists for the room (and has not finished), it updates that row;
-// otherwise it inserts a new one.
-func (r *Repository) SaveGameState(ctx context.Context, roomID string, round int, phase string, stateJSON []byte) error {
-	_, err := r.db.ExecContext(ctx,
+// otherwise it inserts a new one. Returns the game ID.
+func (r *Repository) SaveGameState(ctx context.Context, roomID string, round int, phase string, stateJSON []byte) (string, error) {
+	var gameID string
+	err := r.db.QueryRowContext(ctx,
 		`INSERT INTO games (room_id, round_number, phase, state_json)
 		 VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (id) DO UPDATE
-		   SET round_number = EXCLUDED.round_number,
-		       phase = EXCLUDED.phase,
-		       state_json = EXCLUDED.state_json`,
+		 RETURNING id`,
 		roomID, round, phase, stateJSON,
-	)
+	).Scan(&gameID)
 	if err != nil {
-		return fmt.Errorf("save game state: %w", err)
+		return "", fmt.Errorf("save game state: %w", err)
 	}
-	return nil
+	return gameID, nil
 }
 
 // LoadGameState returns the most recent unfinished game state JSON for a room.
@@ -172,6 +170,114 @@ func (r *Repository) RecordGameResult(ctx context.Context, gameID string, player
 	}
 
 	return tx.Commit()
+}
+
+// ---------- Game History ----------
+
+// GetGameHistory returns the most recent completed games for a player, limited to 50.
+func (r *Repository) GetGameHistory(ctx context.Context, playerID string) ([]GameHistoryEntry, error) {
+	// Step 1: Get the game IDs and basic info for games this player participated in.
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT g.id, r.code, g.finished_at, g.round_number
+		 FROM games g
+		 JOIN rooms r ON r.id = g.room_id
+		 JOIN game_players gp ON gp.game_id = g.id
+		 WHERE gp.user_id = $1 AND g.finished_at IS NOT NULL
+		 ORDER BY g.finished_at DESC
+		 LIMIT 50`,
+		playerID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get game history: %w", err)
+	}
+	defer rows.Close()
+
+	type gameInfo struct {
+		entry GameHistoryEntry
+	}
+	var games []gameInfo
+	gameIDs := []string{}
+
+	for rows.Next() {
+		var gi gameInfo
+		if err := rows.Scan(&gi.entry.GameID, &gi.entry.RoomCode, &gi.entry.FinishedAt, &gi.entry.Rounds); err != nil {
+			return nil, fmt.Errorf("scan game history: %w", err)
+		}
+		games = append(games, gi)
+		gameIDs = append(gameIDs, gi.entry.GameID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate game history: %w", err)
+	}
+	if len(games) == 0 {
+		return []GameHistoryEntry{}, nil
+	}
+
+	// Step 2: Get all player results for these games.
+	// Build a parameterized query for the game IDs.
+	placeholders := ""
+	args := make([]interface{}, len(gameIDs))
+	for i, id := range gameIDs {
+		if i > 0 {
+			placeholders += ", "
+		}
+		placeholders += fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	playerRows, err := r.db.QueryContext(ctx,
+		fmt.Sprintf(
+			`SELECT gp.game_id, gp.user_id, u.display_name, gp.final_chips, gp.is_winner
+			 FROM game_players gp
+			 JOIN users u ON u.id = gp.user_id
+			 WHERE gp.game_id IN (%s)
+			 ORDER BY gp.is_winner DESC, gp.final_chips DESC`,
+			placeholders,
+		),
+		args...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get game players: %w", err)
+	}
+	defer playerRows.Close()
+
+	// Map game_id -> []GamePlayerSummary
+	playersByGame := map[string][]GamePlayerSummary{}
+	winnerByGame := map[string]string{}
+	for playerRows.Next() {
+		var gameID, userID, displayName string
+		var finalChips int
+		var isWinner bool
+		if err := playerRows.Scan(&gameID, &userID, &displayName, &finalChips, &isWinner); err != nil {
+			return nil, fmt.Errorf("scan game player: %w", err)
+		}
+		playersByGame[gameID] = append(playersByGame[gameID], GamePlayerSummary{
+			UserID:      userID,
+			DisplayName: displayName,
+			FinalChips:  finalChips,
+			IsWinner:    isWinner,
+		})
+		if isWinner {
+			winnerByGame[gameID] = displayName
+		}
+	}
+	if err := playerRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate game players: %w", err)
+	}
+
+	// Step 3: Assemble the results.
+	entries := make([]GameHistoryEntry, len(games))
+	for i, gi := range games {
+		entry := gi.entry
+		entry.Players = playersByGame[entry.GameID]
+		if entry.Players == nil {
+			entry.Players = []GamePlayerSummary{}
+		}
+		entry.WinnerName = winnerByGame[entry.GameID]
+		entries[i] = entry
+	}
+
+	return entries, nil
 }
 
 // ---------- Game Events ----------
