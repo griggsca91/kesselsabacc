@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(go:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(open:*)"
+    ]
+  }
+}
