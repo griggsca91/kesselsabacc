@@ -25,6 +25,7 @@ func NewHandler(hub *room.Hub, repo *db.Repository) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /rooms", h.CreateRoom)
 	mux.HandleFunc("POST /rooms/{code}/join", h.JoinRoom)
+	mux.HandleFunc("GET /api/games", h.GetGameHistory)
 	mux.HandleFunc("GET /ws", h.WebSocket)
 }
 
@@ -73,6 +74,28 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
+	playerID := r.URL.Query().Get("playerId")
+	if playerID == "" {
+		http.Error(w, "playerId query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	if h.Repo == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	games, err := h.Repo.GetGameHistory(r.Context(), playerID)
+	if err != nil {
+		http.Error(w, "failed to fetch game history", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(games)
 }
 
 func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {

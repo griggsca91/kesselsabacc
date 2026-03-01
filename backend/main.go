@@ -31,7 +31,7 @@ func main() {
 		log.Println("WARNING: DATABASE_URL not set — running without database persistence")
 	}
 
-	hub := room.NewHub()
+	hub := room.NewHub(repo)
 	go hub.Run()
 
 	handler := api.NewHandler(hub, repo)

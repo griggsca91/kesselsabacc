@@ -277,7 +277,7 @@ func TestClientSendBufferFull(t *testing.T) {
 // --- NewClient tests ---
 
 func TestNewClient(t *testing.T) {
-	hub := NewHub()
+	hub := NewHub(nil)
 	// NewClient requires a *websocket.Conn; pass nil for unit test
 	c := NewClient("p1", "ABCD", (*websocket.Conn)(nil), hub)
 

@@ -16,7 +16,7 @@ import (
 
 func newTestHub(t *testing.T) *Hub {
 	t.Helper()
-	h := NewHub()
+	h := NewHub(nil)
 	go h.Run()
 	return h
 }
@@ -51,7 +51,7 @@ func drainMessages(c *Client) {
 // --- CreateRoom tests ---
 
 func TestCreateRoomReturnsValidCode(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, err := h.CreateRoom("host1", "Host")
 	if err != nil {
 		t.Fatalf("CreateRoom error: %v", err)
@@ -67,7 +67,7 @@ func TestCreateRoomReturnsValidCode(t *testing.T) {
 }
 
 func TestCreateRoomAddsPlayerAsHost(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, err := h.CreateRoom("host1", "HostName")
 	if err != nil {
 		t.Fatalf("CreateRoom error: %v", err)
@@ -98,7 +98,7 @@ func TestCreateRoomAddsPlayerAsHost(t *testing.T) {
 }
 
 func TestCreateRoomUniqueCode(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	codes := map[string]bool{}
 	for i := 0; i < 20; i++ {
 		code, err := h.CreateRoom("p"+string(rune('A'+i)), "Player")
@@ -115,7 +115,7 @@ func TestCreateRoomUniqueCode(t *testing.T) {
 // --- JoinRoom tests ---
 
 func TestJoinRoomSuccess(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, _ := h.CreateRoom("host1", "Host")
 
 	err := h.JoinRoom(code, "p2", "Player2")
@@ -138,7 +138,7 @@ func TestJoinRoomSuccess(t *testing.T) {
 }
 
 func TestJoinRoomNotFound(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	err := h.JoinRoom("ZZZZ", "p1", "Player")
 	if err == nil {
 		t.Fatal("expected error for nonexistent room")
@@ -149,7 +149,7 @@ func TestJoinRoomNotFound(t *testing.T) {
 }
 
 func TestJoinRoomFull(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, _ := h.CreateRoom("host", "Host")
 
 	// Fill up to MaxPlayers
@@ -171,7 +171,7 @@ func TestJoinRoomFull(t *testing.T) {
 }
 
 func TestJoinRoomGameInProgress(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, _ := h.CreateRoom("host", "Host")
 	h.JoinRoom(code, "p2", "Player2")
 
@@ -189,7 +189,7 @@ func TestJoinRoomGameInProgress(t *testing.T) {
 }
 
 func TestJoinRoomDuplicateReconnect(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, _ := h.CreateRoom("host", "Host")
 	h.JoinRoom(code, "p2", "Player2")
 
@@ -209,7 +209,7 @@ func TestJoinRoomDuplicateReconnect(t *testing.T) {
 // --- GetRoom tests ---
 
 func TestGetRoomExists(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	code, _ := h.CreateRoom("host", "Host")
 	room, ok := h.GetRoom(code)
 	if !ok || room == nil {
@@ -221,7 +221,7 @@ func TestGetRoomExists(t *testing.T) {
 }
 
 func TestGetRoomNotFound(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	_, ok := h.GetRoom("ZZZZ")
 	if ok {
 		t.Error("GetRoom should return false for nonexistent room")
@@ -732,7 +732,7 @@ func TestBroadcastStateYourHandPerPlayer(t *testing.T) {
 // --- sendError tests ---
 
 func TestSendError(t *testing.T) {
-	h := NewHub()
+	h := NewHub(nil)
 	c := newTestClient("p1", "ABCD")
 
 	h.sendError(c, "something went wrong")

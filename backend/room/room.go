@@ -17,10 +17,11 @@ func generateCode() string {
 }
 
 type Room struct {
-	Code    string
-	Game    *game.Game
-	Clients map[string]*Client // playerID -> client
-	mu      sync.RWMutex
+	Code        string
+	Game        *game.Game
+	Clients     map[string]*Client // playerID -> client
+	ResultSaved bool               // true once game_over results have been persisted
+	mu          sync.RWMutex
 }
 
 func NewRoom() *Room {

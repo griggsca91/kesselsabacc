@@ -1,16 +1,19 @@
 import { useState } from "react";
+import { GameHistory } from "./GameHistory";
 
 interface LobbyProps {
   onCreateRoom: (name: string) => Promise<void>;
   onJoinRoom: (code: string, name: string) => Promise<void>;
+  playerId: string;
 }
 
-export function Lobby({ onCreateRoom, onJoinRoom }: LobbyProps) {
+export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"home" | "create" | "join">("home");
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
 
   async function handleCreate() {
     if (!name.trim()) return setLocalError("Enter your name");
@@ -105,6 +108,22 @@ export function Lobby({ onCreateRoom, onJoinRoom }: LobbyProps) {
           </>
         )}
       </div>
+
+      <div className="lobby-history-toggle">
+        <button
+          className="btn-ghost"
+          onClick={() => setShowHistory(!showHistory)}
+        >
+          {showHistory ? "Hide Game History" : "Game History"}
+        </button>
+      </div>
+
+      {showHistory && (
+        <GameHistory
+          playerId={playerId}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }

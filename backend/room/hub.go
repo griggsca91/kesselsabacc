@@ -1,9 +1,11 @@
 package room
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
+	"sabacc/db"
 	"sabacc/game"
 	"sync"
 )
@@ -16,14 +18,16 @@ type IncomingMessage struct {
 type Hub struct {
 	rooms      map[string]*Room
 	mu         sync.RWMutex
+	repo       *db.Repository // nil when running without a database
 	Register   chan *Client
 	Unregister chan *Client
 	Incoming   chan IncomingMessage
 }
 
-func NewHub() *Hub {
+func NewHub(repo *db.Repository) *Hub {
 	return &Hub{
 		rooms:      map[string]*Room{},
+		repo:       repo,
 		Register:   make(chan *Client, 16),
 		Unregister: make(chan *Client, 16),
 		Incoming:   make(chan IncomingMessage, 128),
@@ -260,6 +264,13 @@ func (h *Hub) broadcastState(room *Room) {
 
 func (h *Hub) broadcastStateUnlocked(room *Room) {
 	g := room.Game
+
+	// Persist game results when the game ends
+	if g.Phase == game.PhaseGameOver && !room.ResultSaved && h.repo != nil {
+		h.persistGameResult(room)
+		room.ResultSaved = true
+	}
+
 	isReveal := g.Phase == game.PhaseReveal || g.Phase == game.PhaseRoundEnd || g.Phase == game.PhaseGameOver
 
 	currentTurnID := ""
@@ -316,6 +327,33 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 			continue
 		}
 		client.Send(msg)
+	}
+}
+
+// persistGameResult saves the completed game and player results to the database.
+func (h *Hub) persistGameResult(room *Room) {
+	g := room.Game
+	ctx := context.Background()
+
+	// Create the game record
+	gameID, err := h.repo.SaveGameState(ctx, room.Code, g.Round, string(g.Phase), nil)
+	if err != nil {
+		log.Printf("failed to save game state: %v", err)
+		return
+	}
+
+	// Build player results
+	results := make([]db.PlayerResult, 0, len(g.Players))
+	for _, p := range g.Players {
+		results = append(results, db.PlayerResult{
+			UserID:     p.ID,
+			FinalChips: p.Chips,
+			IsWinner:   p.ID == g.WinnerID,
+		})
+	}
+
+	if err := h.repo.RecordGameResult(ctx, gameID, results); err != nil {
+		log.Printf("failed to record game result: %v", err)
 	}
 }
 

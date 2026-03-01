@@ -79,3 +79,19 @@ export interface ServerEnvelope {
   type: "game_state" | "error";
   payload: GameState | { message: string };
 }
+
+export interface GameHistoryEntry {
+  gameId: string;
+  roomCode: string;
+  finishedAt: string;
+  rounds: number;
+  players: GamePlayerSummary[];
+  winnerName: string;
+}
+
+export interface GamePlayerSummary {
+  userId: string;
+  displayName: string;
+  finalChips: number;
+  isWinner: boolean;
+}

@@ -19,3 +19,21 @@ type PlayerResult struct {
 	FinalChips int    `json:"finalChips"`
 	IsWinner   bool   `json:"isWinner"`
 }
+
+// GameHistoryEntry represents a completed game in a player's history.
+type GameHistoryEntry struct {
+	GameID     string              `json:"gameId"`
+	RoomCode   string              `json:"roomCode"`
+	FinishedAt time.Time           `json:"finishedAt"`
+	Rounds     int                 `json:"rounds"`
+	Players    []GamePlayerSummary `json:"players"`
+	WinnerName string              `json:"winnerName"`
+}
+
+// GamePlayerSummary holds a player's summary within a completed game.
+type GamePlayerSummary struct {
+	UserID      string `json:"userId"`
+	DisplayName string `json:"displayName"`
+	FinalChips  int    `json:"finalChips"`
+	IsWinner    bool   `json:"isWinner"`
+}
