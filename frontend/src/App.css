@@ -119,7 +119,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl);
-  width: 320px;
+  width: 420px;
   max-width: 100%;
   display: flex;
   flex-direction: column;
