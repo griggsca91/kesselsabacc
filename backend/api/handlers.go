@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 
 type Handler struct {
 	Hub  *room.Hub
-	Repo *db.Repository   // nil when running without a database
+	Repo *db.Repository    // nil when running without a database
 	Auth *auth.AuthService // nil when running without a database
 }
 
@@ -58,6 +58,11 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If an auth token is present, use the authenticated user's ID as the player ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		req.PlayerID = userID
+	}
+
 	code, err := h.Hub.CreateRoom(req.PlayerID, req.PlayerName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -81,6 +86,11 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If an auth token is present, use the authenticated user's ID as the player ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		req.PlayerID = userID
+	}
+
 	if err := h.Hub.JoinRoom(code, req.PlayerID, req.PlayerName); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -90,7 +100,11 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
-	playerID := r.URL.Query().Get("playerId")
+	// Prefer the authenticated user's ID; fall back to the query param for guests.
+	playerID := h.authenticatedUserID(r)
+	if playerID == "" {
+		playerID = r.URL.Query().Get("playerId")
+	}
 	if playerID == "" {
 		http.Error(w, "playerId query parameter is required", http.StatusBadRequest)
 		return
@@ -109,6 +123,31 @@ func (h *Handler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(games)
+}
+
+// authenticatedUserID extracts and validates a Bearer token from the Authorization
+// header. Returns the authenticated user ID or "" if not present/invalid.
+func (h *Handler) authenticatedUserID(r *http.Request) string {
+	if h.Auth == nil {
+		return ""
+	}
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	tokenStr := strings.TrimSpace(parts[1])
+	if tokenStr == "" {
+		return ""
+	}
+	userID, err := h.Auth.ValidateToken(tokenStr)
+	if err != nil {
+		return ""
+	}
+	return userID
 }
 
 func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {

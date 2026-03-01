@@ -2,6 +2,8 @@ import { useGameHistory } from "../hooks/useGameHistory";
 
 interface GameHistoryProps {
   playerId: string;
+  /** JWT auth token for authenticated history lookups. */
+  token?: string | null;
   onClose: () => void;
 }
 
@@ -16,8 +18,8 @@ function formatDate(iso: string): string {
   });
 }
 
-export function GameHistory({ playerId, onClose }: GameHistoryProps) {
-  const { games, isLoading, error, refresh } = useGameHistory(playerId);
+export function GameHistory({ playerId, token, onClose }: GameHistoryProps) {
+  const { games, isLoading, error, refresh } = useGameHistory({ playerId, token });
 
   const myResult = (game: (typeof games)[number]) => {
     const me = game.players.find((p) => p.userId === playerId);

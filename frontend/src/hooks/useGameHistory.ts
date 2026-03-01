@@ -3,6 +3,12 @@ import type { GameHistoryEntry } from "../types";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
+interface UseGameHistoryOptions {
+  playerId: string;
+  /** JWT auth token. When provided, the server uses it to identify the player. */
+  token?: string | null;
+}
+
 interface UseGameHistoryReturn {
   games: GameHistoryEntry[];
   isLoading: boolean;
@@ -10,7 +16,7 @@ interface UseGameHistoryReturn {
   refresh: () => void;
 }
 
-export function useGameHistory(playerId: string): UseGameHistoryReturn {
+export function useGameHistory({ playerId, token }: UseGameHistoryOptions): UseGameHistoryReturn {
   const [games, setGames] = useState<GameHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +26,13 @@ export function useGameHistory(playerId: string): UseGameHistoryReturn {
     setIsLoading(true);
     setError(null);
     try {
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
       const res = await fetch(
-        `${API}/api/games?playerId=${encodeURIComponent(playerId)}`
+        `${API}/api/games?playerId=${encodeURIComponent(playerId)}`,
+        { headers },
       );
       if (!res.ok) {
         const text = await res.text();
@@ -35,7 +46,7 @@ export function useGameHistory(playerId: string): UseGameHistoryReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [playerId]);
+  }, [playerId, token]);
 
   useEffect(() => {
     fetchHistory();

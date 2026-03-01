@@ -61,6 +61,7 @@ function AppInner() {
           playerId={playerId}
           displayName={user?.displayName}
           isAuthenticated={!!user}
+          token={token}
           onLogout={() => {
             logout();
             setGuestMode(false);
