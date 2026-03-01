@@ -36,16 +36,18 @@
   --purple-light: #a0a0e8;
 
   /* ── Card face colors ── */
-  --card-sand-bg: linear-gradient(160deg, #fdf8ec, #f5edd6);
+  --card-sand-bg: linear-gradient(160deg, #fdf8ec 0%, #f5edd6 40%, #efe4c4 100%);
   --card-sand-text: #8a6010;
-  --card-blood-bg: linear-gradient(160deg, #fdf0f0, #f5e0e0);
+  --card-blood-bg: linear-gradient(160deg, #fdf0f0 0%, #f5dede 40%, #efd0d0 100%);
   --card-blood-text: #8b1a1a;
-  --card-sylop-bg: linear-gradient(160deg, #f0f4ff, #e5ecfa);
+  --card-sylop-bg: linear-gradient(160deg, #f0f4ff 0%, #e5ecfa 40%, #dde4f8 100%);
   --card-sylop-text: #2a4a8a;
+  --card-sylop-border: #a0b4dd;
   --card-default-bg: #f5f0e8;
   --card-default-border: #ddd;
-  --card-back-bg: linear-gradient(135deg, #1a1a2a, #0e0e18);
+  --card-back-bg: linear-gradient(145deg, #1a1a2e, #12121f 50%, #0e0e18);
   --card-back-inner-border: #2a2a40;
+  --card-back-outer-border: #3a3a50;
 
   /* ── Error / warning ── */
   --error-bg: linear-gradient(135deg, #4a1a0a, #5a2a10);
