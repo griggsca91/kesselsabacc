@@ -3,10 +3,13 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { AuthPage } from "./components/AuthPage";
 import { useGame } from "./hooks/useGame";
+import { useToast } from "./hooks/useToast";
+import { useGameEvents } from "./hooks/useGameEvents";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ErrorBanner } from "./components/ErrorBanner";
+import { ToastContainer } from "./components/Toast";
 import "./App.css";
 
 function AppInner() {
@@ -31,6 +34,9 @@ function AppInner() {
     playerId: user?.id,
     token,
   });
+
+  const { toasts, addToast } = useToast();
+  useGameEvents(gameState, playerId, addToast);
 
   // Show loading spinner while checking stored token
   if (isLoading) {
@@ -84,6 +90,7 @@ function AppInner() {
         onStand={stand}
         onNextRound={nextRound}
       />
+      <ToastContainer toasts={toasts} />
     </>
   );
 }
