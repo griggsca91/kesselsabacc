@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"sabacc/db"
 	"sabacc/room"
 
 	"github.com/gorilla/websocket"
@@ -13,11 +14,12 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	Hub *room.Hub
+	Hub  *room.Hub
+	Repo *db.Repository // nil when running without a database
 }
 
-func NewHandler(hub *room.Hub) *Handler {
-	return &Handler{Hub: hub}
+func NewHandler(hub *room.Hub, repo *db.Repository) *Handler {
+	return &Handler{Hub: hub, Repo: repo}
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
