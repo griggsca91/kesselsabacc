@@ -255,6 +255,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-xs);
   margin-bottom: var(--space-xs);
 }
 
@@ -334,6 +335,92 @@
   display: flex;
   gap: 0.35rem;
   margin-top: var(--space-sm);
+}
+
+/* ─────────────────────────────────────────
+   AVATARS
+───────────────────────────────────────── */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--border-bright);
+  flex-shrink: 0;
+  line-height: 1;
+  user-select: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+@keyframes avatar-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(200, 168, 75, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(200, 168, 75, 0.6); }
+}
+
+.avatar.avatar-active {
+  border-color: var(--gold);
+  animation: avatar-pulse 1.8s ease-in-out infinite;
+}
+
+.avatar-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.avatar-picker-label {
+  font-size: 0.72rem;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.avatar-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-xs);
+  justify-items: center;
+}
+
+.avatar-picker-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: var(--space-xs);
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.avatar-picker-option:hover {
+  background: var(--surface2);
+  border-color: var(--border-bright);
+}
+
+.avatar-picker-option.selected {
+  border-color: var(--gold);
+  background: rgba(200, 168, 75, 0.08);
+}
+
+.avatar-picker-option.selected .avatar {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(200, 168, 75, 0.3);
+}
+
+.avatar-picker-option-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─────────────────────────────────────────
@@ -1302,6 +1389,11 @@
     width: 100%;
     padding: var(--space-md);
   }
+
+  .avatar-picker-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.3rem;
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -1472,6 +1564,20 @@
     font-size: 0.82rem;
     padding: 0.6rem var(--space-md);
     gap: var(--space-sm);
+  }
+
+  /* Avatar picker compact on mobile */
+  .avatar-picker-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.2rem;
+  }
+
+  .avatar-picker-option {
+    padding: 0.2rem;
+  }
+
+  .avatar-picker-option-label {
+    display: none;
   }
 
   /* Toast on mobile */

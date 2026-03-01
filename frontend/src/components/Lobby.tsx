@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { GameHistory } from "./GameHistory";
+import { AvatarPicker, AVATARS } from "./AvatarPicker";
+import { useAvatar } from "../hooks/useAvatar";
 
 interface LobbyProps {
   onCreateRoom: (name: string) => Promise<void>;
   onJoinRoom: (code: string, name: string) => Promise<void>;
   playerId: string;
-  /** Pre-fill the name input when the user is authenticated. */
   displayName?: string;
-  /** Whether the user is logged in (shows logout button). */
   isAuthenticated?: boolean;
-  /** JWT auth token for authenticated API calls. */
   token?: string | null;
-  /** Callback to log out. */
   onLogout?: () => void;
 }
 
@@ -30,6 +28,12 @@ export function Lobby({
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const { avatarId, setAvatarId } = useAvatar();
+
+  if (!avatarId) {
+    const random = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+    setAvatarId(random.id);
+  }
 
   async function handleCreate() {
     if (!name.trim()) return setLocalError("Enter your name");
@@ -100,6 +104,7 @@ export function Lobby({
               maxLength={20}
               autoFocus
             />
+            <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
             {err && <p className="error">{err}</p>}
             <button className="btn-primary" onClick={handleCreate} disabled={loading}>
               {loading ? "Creating..." : "Create Room"}
@@ -118,6 +123,7 @@ export function Lobby({
               maxLength={20}
               autoFocus
             />
+            <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
             <input
               placeholder="Room code -- e.g. AB3K"
               value={joinCode}
