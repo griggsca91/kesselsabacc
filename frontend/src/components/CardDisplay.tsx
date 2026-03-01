@@ -51,9 +51,9 @@ export function CardDisplay({ card, size = "normal" }: CardDisplayProps) {
 }
 
 export function CardBack({ size = "normal" }: { size?: "normal" | "sm" }) {
-  const style = size === "sm" ? { width: 52, height: 72, borderRadius: 5 } : {};
+  const sizeClass = size === "sm" ? " card-back-sm" : "";
   return (
-    <div className="card-back" style={style}>
+    <div className={`card-back${sizeClass}`}>
       <div className="card-back-pattern">
         <span className="card-back-icon">✦</span>
       </div>
