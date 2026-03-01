@@ -1,0 +1,1 @@
+ALTER TABLE game_players ADD COLUMN IF NOT EXISTS hand_rank TEXT;

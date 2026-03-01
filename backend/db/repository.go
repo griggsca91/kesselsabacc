@@ -157,12 +157,13 @@ func (r *Repository) RecordGameResult(ctx context.Context, gameID string, player
 	// Insert player results
 	for _, pr := range playerResults {
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO game_players (game_id, user_id, final_chips, is_winner)
-			 VALUES ($1, $2, $3, $4)
+			`INSERT INTO game_players (game_id, user_id, final_chips, is_winner, hand_rank)
+			 VALUES ($1, $2, $3, $4, $5)
 			 ON CONFLICT (game_id, user_id) DO UPDATE
 			   SET final_chips = EXCLUDED.final_chips,
-			       is_winner = EXCLUDED.is_winner`,
-			gameID, pr.UserID, pr.FinalChips, pr.IsWinner,
+			       is_winner = EXCLUDED.is_winner,
+			       hand_rank = EXCLUDED.hand_rank`,
+			gameID, pr.UserID, pr.FinalChips, pr.IsWinner, pr.HandRank,
 		)
 		if err != nil {
 			return fmt.Errorf("insert player result: %w", err)
@@ -278,6 +279,90 @@ func (r *Repository) GetGameHistory(ctx context.Context, playerID string) ([]Gam
 	}
 
 	return entries, nil
+}
+
+// ---------- Player Stats ----------
+
+// GetPlayerStats returns aggregated statistics for a player.
+func (r *Repository) GetPlayerStats(ctx context.Context, userID string) (*PlayerStats, error) {
+	var stats PlayerStats
+	var bestHandRank sql.NullInt64
+
+	err := r.db.QueryRowContext(ctx,
+		`SELECT
+			COUNT(*) AS games_played,
+			COUNT(*) FILTER (WHERE is_winner) AS wins,
+			MIN(CASE hand_rank
+				WHEN 'pure_sabacc' THEN 1
+				WHEN 'sabacc' THEN 2
+				WHEN 'no_sabacc' THEN 3
+			END) AS best_hand_rank
+		 FROM game_players
+		 WHERE user_id = $1`,
+		userID,
+	).Scan(&stats.GamesPlayed, &stats.Wins, &bestHandRank)
+	if err != nil {
+		return nil, fmt.Errorf("get player stats: %w", err)
+	}
+
+	stats.Losses = stats.GamesPlayed - stats.Wins
+	if stats.GamesPlayed > 0 {
+		stats.WinRate = float64(stats.Wins) / float64(stats.GamesPlayed)
+	}
+
+	if bestHandRank.Valid {
+		var name string
+		switch bestHandRank.Int64 {
+		case 1:
+			name = "pure_sabacc"
+		case 2:
+			name = "sabacc"
+		case 3:
+			name = "no_sabacc"
+		}
+		if name != "" {
+			stats.BestHand = &name
+		}
+	}
+
+	return &stats, nil
+}
+
+// GetPlayerProfile returns the full profile for a player: user info, stats, and game history.
+// If includeEmail is false, the email field is omitted from the response.
+func (r *Repository) GetPlayerProfile(ctx context.Context, userID string, includeEmail bool) (*PlayerProfile, error) {
+	user, err := r.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, nil
+	}
+
+	stats, err := r.GetPlayerStats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	games, err := r.GetGameHistory(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	profileUser := ProfileUser{
+		ID:          user.ID,
+		DisplayName: user.DisplayName,
+		MemberSince: user.CreatedAt,
+	}
+	if includeEmail {
+		profileUser.Email = user.Email
+	}
+
+	return &PlayerProfile{
+		User:  profileUser,
+		Stats: *stats,
+		Games: games,
+	}, nil
 }
 
 // ---------- Game Events ----------

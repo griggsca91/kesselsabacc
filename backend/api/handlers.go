@@ -30,6 +30,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /rooms", h.CreateRoom)
 	mux.HandleFunc("POST /rooms/{code}/join", h.JoinRoom)
 	mux.HandleFunc("GET /api/games", h.GetGameHistory)
+	mux.HandleFunc("GET /api/profile/{id}", h.GetProfileByID)
+	mux.HandleFunc("GET /api/profile", h.GetProfile)
 	mux.HandleFunc("GET /ws", h.WebSocket)
 
 	// Auth routes — only registered when auth is available
@@ -123,6 +125,64 @@ func (h *Handler) GetGameHistory(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(games)
+}
+
+// GetProfile returns the authenticated user's own profile with stats and game history.
+func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	userID := h.authenticatedUserID(r)
+	if userID == "" {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	if h.Repo == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	profile, err := h.Repo.GetPlayerProfile(r.Context(), userID, true)
+	if err != nil {
+		http.Error(w, "failed to fetch profile", http.StatusInternalServerError)
+		return
+	}
+	if profile == nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profile)
+}
+
+// GetProfileByID returns a public profile for any player by their user ID.
+func (h *Handler) GetProfileByID(w http.ResponseWriter, r *http.Request) {
+	userID := r.PathValue("id")
+	if userID == "" {
+		http.Error(w, "user id is required", http.StatusBadRequest)
+		return
+	}
+
+	if h.Repo == nil {
+		http.Error(w, "database not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// includeEmail only if the requester is viewing their own profile
+	requesterID := h.authenticatedUserID(r)
+	includeEmail := requesterID == userID
+
+	profile, err := h.Repo.GetPlayerProfile(r.Context(), userID, includeEmail)
+	if err != nil {
+		http.Error(w, "failed to fetch profile", http.StatusInternalServerError)
+		return
+	}
+	if profile == nil {
+		http.Error(w, "user not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profile)
 }
 
 // authenticatedUserID extracts and validates a Bearer token from the Authorization

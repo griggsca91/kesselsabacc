@@ -177,8 +177,8 @@ func (h *Hub) handleStartGame(c *Client, room *Room) error {
 }
 
 type DrawPayload struct {
-	Suit      game.CardSuit      `json:"suit"`
-	TokenUsed *game.ShiftToken   `json:"tokenUsed,omitempty"`
+	Suit      game.CardSuit    `json:"suit"`
+	TokenUsed *game.ShiftToken `json:"tokenUsed,omitempty"`
 }
 
 func (h *Hub) handleDraw(c *Client, room *Room, payload json.RawMessage) error {
@@ -224,35 +224,35 @@ func (h *Hub) handleNextRound(c *Client, room *Room) error {
 // GameStateView is the sanitized game state sent to each player.
 // Other players' cards are hidden unless it's the reveal phase.
 type GameStateView struct {
-	Phase        game.Phase       `json:"phase"`
-	Round        int              `json:"round"`
-	TurnInRound  int              `json:"turnInRound"`
-	CurrentTurnPlayerID string   `json:"currentTurnPlayerId"`
-	Players      []PlayerView     `json:"players"`
-	YourHand     *HandView        `json:"yourHand"`
-	LastResult   *game.RoundResult `json:"lastResult"`
-	WinnerID     string           `json:"winnerId"`
-	SandRemaining  int            `json:"sandRemaining"`
-	BloodRemaining int            `json:"bloodRemaining"`
+	Phase               game.Phase        `json:"phase"`
+	Round               int               `json:"round"`
+	TurnInRound         int               `json:"turnInRound"`
+	CurrentTurnPlayerID string            `json:"currentTurnPlayerId"`
+	Players             []PlayerView      `json:"players"`
+	YourHand            *HandView         `json:"yourHand"`
+	LastResult          *game.RoundResult `json:"lastResult"`
+	WinnerID            string            `json:"winnerId"`
+	SandRemaining       int               `json:"sandRemaining"`
+	BloodRemaining      int               `json:"bloodRemaining"`
 }
 
 type PlayerView struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Chips       int              `json:"chips"`
-	Invested    int              `json:"invested"`
-	IsHost      bool             `json:"isHost"`
-	Eliminated  bool             `json:"eliminated"`
-	TokensLeft  int              `json:"tokensLeft"`
-	Stood       bool             `json:"stood"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Chips      int    `json:"chips"`
+	Invested   int    `json:"invested"`
+	IsHost     bool   `json:"isHost"`
+	Eliminated bool   `json:"eliminated"`
+	TokensLeft int    `json:"tokensLeft"`
+	Stood      bool   `json:"stood"`
 	// Cards only visible during reveal
-	SandCard    *game.Card       `json:"sandCard,omitempty"`
-	BloodCard   *game.Card       `json:"bloodCard,omitempty"`
+	SandCard  *game.Card `json:"sandCard,omitempty"`
+	BloodCard *game.Card `json:"bloodCard,omitempty"`
 }
 
 type HandView struct {
-	SandCard  *game.Card `json:"sandCard"`
-	BloodCard *game.Card `json:"bloodCard"`
+	SandCard  *game.Card        `json:"sandCard"`
+	BloodCard *game.Card        `json:"bloodCard"`
 	Tokens    []game.ShiftToken `json:"tokens"`
 }
 
@@ -345,11 +345,19 @@ func (h *Hub) persistGameResult(room *Room) {
 	// Build player results
 	results := make([]db.PlayerResult, 0, len(g.Players))
 	for _, p := range g.Players {
-		results = append(results, db.PlayerResult{
+		pr := db.PlayerResult{
 			UserID:     p.ID,
 			FinalChips: p.Chips,
 			IsWinner:   p.ID == g.WinnerID,
-		})
+		}
+		// Store the hand rank from the last round's result if available
+		if g.LastResult != nil {
+			if hand, ok := g.LastResult.PlayerHands[p.ID]; ok {
+				rankName := game.HandRankName(hand.Rank)
+				pr.HandRank = &rankName
+			}
+		}
+		results = append(results, pr)
 	}
 
 	if err := h.repo.RecordGameResult(ctx, gameID, results); err != nil {

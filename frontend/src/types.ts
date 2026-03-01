@@ -101,3 +101,24 @@ export interface AuthUser {
   email: string;
   displayName: string;
 }
+
+export interface ProfileUser {
+  id: string;
+  displayName: string;
+  email?: string;
+  memberSince: string;
+}
+
+export interface PlayerStats {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  bestHand: string | null;
+}
+
+export interface PlayerProfile {
+  user: ProfileUser;
+  stats: PlayerStats;
+  games: GameHistoryEntry[];
+}
