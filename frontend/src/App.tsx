@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 import { AuthPage } from "./components/AuthPage";
 import { useGame } from "./hooks/useGame";
 import { Lobby } from "./components/Lobby";

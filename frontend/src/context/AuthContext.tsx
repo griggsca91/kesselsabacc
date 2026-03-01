@@ -1,7 +1,6 @@
 import {
   createContext,
   useCallback,
-  useContext,
   useEffect,
   useState,
 } from "react";
@@ -11,7 +10,7 @@ import type { ReactNode } from "react";
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 const TOKEN_KEY = "sabacc_auth_token";
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
@@ -20,25 +19,31 @@ interface AuthContextValue {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Only start loading if there's a stored token to validate
+  const [isLoading, setIsLoading] = useState(
+    () => localStorage.getItem(TOKEN_KEY) !== null
+  );
 
   // On mount, check localStorage for an existing token and validate it.
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
     if (!stored) {
-      setIsLoading(false);
       return;
     }
+
+    let cancelled = false;
 
     fetch(`${API}/auth/me`, {
       headers: { Authorization: `Bearer ${stored}` },
     })
       .then(async (res) => {
+        if (cancelled) return;
         if (res.ok) {
           const u: AuthUser = await res.json();
           setUser(u);
@@ -49,11 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
+        if (cancelled) return;
         // Server unreachable — keep the token in storage but don't set user
         // so the app can still offer guest play
         localStorage.removeItem(TOKEN_KEY);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   const signup = useCallback(
@@ -115,12 +125,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return ctx;
 }
