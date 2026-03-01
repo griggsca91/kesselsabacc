@@ -3,10 +3,9 @@ import { useState } from "react";
 interface LobbyProps {
   onCreateRoom: (name: string) => Promise<void>;
   onJoinRoom: (code: string, name: string) => Promise<void>;
-  error: string | null;
 }
 
-export function Lobby({ onCreateRoom, onJoinRoom, error }: LobbyProps) {
+export function Lobby({ onCreateRoom, onJoinRoom }: LobbyProps) {
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"home" | "create" | "join">("home");
@@ -16,26 +15,18 @@ export function Lobby({ onCreateRoom, onJoinRoom, error }: LobbyProps) {
   async function handleCreate() {
     if (!name.trim()) return setLocalError("Enter your name");
     setLoading(true);
-    try {
-      await onCreateRoom(name.trim());
-    } catch (e: unknown) {
-      setLocalError(e instanceof Error ? e.message : "Failed to create room");
-    } finally {
-      setLoading(false);
-    }
+    setLocalError("");
+    await onCreateRoom(name.trim());
+    setLoading(false);
   }
 
   async function handleJoin() {
     if (!name.trim()) return setLocalError("Enter your name");
     if (joinCode.trim().length !== 4) return setLocalError("Enter a 4-character room code");
     setLoading(true);
-    try {
-      await onJoinRoom(joinCode.trim(), name.trim());
-    } catch (e: unknown) {
-      setLocalError(e instanceof Error ? e.message : "Failed to join room");
-    } finally {
-      setLoading(false);
-    }
+    setLocalError("");
+    await onJoinRoom(joinCode.trim(), name.trim());
+    setLoading(false);
   }
 
   function back() {
@@ -43,7 +34,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, error }: LobbyProps) {
     setLocalError("");
   }
 
-  const err = localError || error;
+  const err = localError;
 
   return (
     <div className="lobby">

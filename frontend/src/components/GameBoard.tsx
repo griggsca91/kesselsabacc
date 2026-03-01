@@ -9,7 +9,6 @@ interface GameBoardProps {
   onDraw: (suit: "sand" | "blood", token?: ShiftToken) => void;
   onStand: (token?: ShiftToken) => void;
   onNextRound: () => void;
-  error: string | null;
 }
 
 const TOKEN_LABELS: Record<ShiftToken, string> = {
@@ -38,7 +37,6 @@ export function GameBoard({
   onDraw,
   onStand,
   onNextRound,
-  error,
 }: GameBoardProps) {
   const me = state.players.find((p) => p.id === playerId);
   const isMyTurn = state.currentTurnPlayerId === playerId;
@@ -282,8 +280,6 @@ export function GameBoard({
           <p className="game-over-winner">wins the pot</p>
         </section>
       )}
-
-      {error && <p className="error" style={{ textAlign: "center" }}>{error}</p>}
 
       <div className="deck-info">
         <div className="deck-info-item">
