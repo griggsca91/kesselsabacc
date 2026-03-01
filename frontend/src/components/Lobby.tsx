@@ -9,6 +9,8 @@ interface LobbyProps {
   displayName?: string;
   /** Whether the user is logged in (shows logout button). */
   isAuthenticated?: boolean;
+  /** JWT auth token for authenticated API calls. */
+  token?: string | null;
   /** Callback to log out. */
   onLogout?: () => void;
 }
@@ -19,6 +21,7 @@ export function Lobby({
   playerId,
   displayName,
   isAuthenticated,
+  token,
   onLogout,
 }: LobbyProps) {
   const [name, setName] = useState(displayName ?? "");
@@ -144,6 +147,7 @@ export function Lobby({
       {showHistory && (
         <GameHistory
           playerId={playerId}
+          token={token}
           onClose={() => setShowHistory(false)}
         />
       )}
