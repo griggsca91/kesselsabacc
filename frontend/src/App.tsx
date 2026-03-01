@@ -3,6 +3,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { AuthPage } from "./components/AuthPage";
 import { useGame } from "./hooks/useGame";
+import { useAvatar } from "./hooks/useAvatar";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { ConnectionBanner } from "./components/ConnectionBanner";
@@ -32,7 +33,8 @@ function AppInner() {
     token,
   });
 
-  // Show loading spinner while checking stored token
+  const { avatarId } = useAvatar();
+
   if (isLoading) {
     return (
       <div className="lobby">
@@ -46,7 +48,6 @@ function AppInner() {
     );
   }
 
-  // If not authenticated and not in guest mode, show auth page
   if (!user && !guestMode) {
     return <AuthPage onGuestPlay={() => setGuestMode(true)} />;
   }
@@ -79,6 +80,7 @@ function AppInner() {
         state={gameState}
         playerId={playerId}
         roomCode={roomCode}
+        avatarId={avatarId}
         onStartGame={startGame}
         onDraw={draw}
         onStand={stand}
