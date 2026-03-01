@@ -1042,6 +1042,89 @@
 }
 
 /* ─────────────────────────────────────────
+   PHASE TRANSITION OVERLAY
+───────────────────────────────────────── */
+.phase-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 9, 15, 0.82);
+  pointer-events: none;
+}
+
+.phase-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.phase-overlay-text {
+  font-family: 'Cinzel', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow:
+    0 0 30px var(--gold-glow),
+    0 0 60px rgba(200, 168, 75, 0.18);
+  letter-spacing: 0.12em;
+  text-align: center;
+  animation: shimmer-text 1.5s ease-in-out;
+}
+
+.phase-overlay-text--reveal {
+  font-size: 3.5rem;
+  text-shadow:
+    0 0 40px var(--gold-glow),
+    0 0 80px rgba(200, 168, 75, 0.25),
+    0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+.phase-overlay-text--gameover {
+  font-size: 3.8rem;
+  text-shadow:
+    0 0 50px var(--gold-glow),
+    0 0 100px rgba(200, 168, 75, 0.3),
+    0 2px 16px rgba(0, 0, 0, 0.7);
+  animation: shimmer-text 2.5s ease-in-out;
+}
+
+.phase-overlay-gameover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.phase-overlay-subtitle {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  text-shadow: 0 0 20px rgba(200, 168, 75, 0.15);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+@keyframes shimmer-text {
+  0% {
+    opacity: 0.6;
+    filter: brightness(0.8);
+  }
+  40% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+/* ─────────────────────────────────────────
    RESPONSIVE: TABLET (< 768px)
 ───────────────────────────────────────── */
 @media (max-width: 768px) {
@@ -1095,6 +1178,19 @@
   .game-history {
     width: 100%;
     padding: var(--space-md);
+  }
+
+  .phase-overlay-text {
+    font-size: 2.2rem;
+  }
+  .phase-overlay-text--reveal {
+    font-size: 2.6rem;
+  }
+  .phase-overlay-text--gameover {
+    font-size: 2.8rem;
+  }
+  .phase-overlay-subtitle {
+    font-size: 1.2rem;
   }
 }
 
@@ -1262,5 +1358,18 @@
     font-size: 0.82rem;
     padding: 0.6rem var(--space-md);
     gap: var(--space-sm);
+  }
+
+  .phase-overlay-text {
+    font-size: 1.8rem;
+  }
+  .phase-overlay-text--reveal {
+    font-size: 2rem;
+  }
+  .phase-overlay-text--gameover {
+    font-size: 2.2rem;
+  }
+  .phase-overlay-subtitle {
+    font-size: 1rem;
   }
 }
