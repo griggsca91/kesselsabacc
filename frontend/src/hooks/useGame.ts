@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CardSuit, GameState, ServerEnvelope, ShiftToken } from "../types";
 
-const API = "http://localhost:8080";
-const WS = "ws://localhost:8080";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const WS = import.meta.env.VITE_WS_URL || "ws://localhost:8080";
 
 interface UseGameReturn {
   gameState: GameState | null;
