@@ -5,10 +5,23 @@ interface LobbyProps {
   onCreateRoom: (name: string) => Promise<void>;
   onJoinRoom: (code: string, name: string) => Promise<void>;
   playerId: string;
+  /** Pre-fill the name input when the user is authenticated. */
+  displayName?: string;
+  /** Whether the user is logged in (shows logout button). */
+  isAuthenticated?: boolean;
+  /** Callback to log out. */
+  onLogout?: () => void;
 }
 
-export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
-  const [name, setName] = useState("");
+export function Lobby({
+  onCreateRoom,
+  onJoinRoom,
+  playerId,
+  displayName,
+  isAuthenticated,
+  onLogout,
+}: LobbyProps) {
+  const [name, setName] = useState(displayName ?? "");
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"home" | "create" | "join">("home");
   const [loading, setLoading] = useState(false);
@@ -52,6 +65,11 @@ export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
         {mode === "home" && (
           <>
             <div className="lobby-card-title">Choose your table</div>
+            {isAuthenticated && (
+              <p style={{ textAlign: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                Signed in as <strong style={{ color: "var(--text)" }}>{displayName}</strong>
+              </p>
+            )}
             <div className="lobby-home-buttons">
               <button className="btn-primary" onClick={() => setMode("create")}>
                 Create Room
@@ -59,6 +77,11 @@ export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
               <button className="btn-ghost" onClick={() => setMode("join")}>
                 Join Room
               </button>
+              {isAuthenticated && onLogout && (
+                <button className="btn-ghost" onClick={onLogout}>
+                  Log Out
+                </button>
+              )}
             </div>
           </>
         )}
@@ -76,7 +99,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
             />
             {err && <p className="error">{err}</p>}
             <button className="btn-primary" onClick={handleCreate} disabled={loading}>
-              {loading ? "Creating…" : "Create Room"}
+              {loading ? "Creating..." : "Create Room"}
             </button>
             <button className="btn-ghost" onClick={back}>Back</button>
           </>
@@ -93,7 +116,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
               autoFocus
             />
             <input
-              placeholder="Room code — e.g. AB3K"
+              placeholder="Room code -- e.g. AB3K"
               value={joinCode}
               onChange={(e) => { setJoinCode(e.target.value.toUpperCase()); setLocalError(""); }}
               onKeyDown={(e) => e.key === "Enter" && handleJoin()}
@@ -102,7 +125,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, playerId }: LobbyProps) {
             />
             {err && <p className="error">{err}</p>}
             <button className="btn-primary" onClick={handleJoin} disabled={loading}>
-              {loading ? "Joining…" : "Join Room"}
+              {loading ? "Joining..." : "Join Room"}
             </button>
             <button className="btn-ghost" onClick={back}>Back</button>
           </>

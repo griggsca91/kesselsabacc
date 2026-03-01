@@ -95,3 +95,9 @@ export interface GamePlayerSummary {
   finalChips: number;
   isWinner: boolean;
 }
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
+}
