@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sabacc/api"
 	"sabacc/room"
 )
@@ -29,8 +31,14 @@ func main() {
 		})
 	}
 
-	log.Println("Backend running on :8080")
-	if err := http.ListenAndServe(":8080", corsMiddleware(mux)); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	addr := fmt.Sprintf(":%s", port)
+	log.Printf("Backend running on %s", addr)
+	if err := http.ListenAndServe(addr, corsMiddleware(mux)); err != nil {
 		log.Fatal(err)
 	}
 }
