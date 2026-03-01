@@ -1,24 +1,91 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
+  /* ── Brand colors ── */
   --gold: #c8a84b;
   --gold-light: #e8c870;
   --gold-dim: #8a7030;
+  --gold-glow: rgba(200, 168, 75, 0.35);
+
   --blood: #c0392b;
   --blood-dark: #8b1a1a;
   --blood-light: #e05040;
+
+  /* ── Surfaces ── */
   --bg: #09090f;
   --surface: #111118;
   --surface2: #18181f;
   --surface3: #202030;
+
+  /* ── Borders ── */
   --border: #2a2a3a;
   --border-bright: #3a3a50;
+
+  /* ── Text ── */
   --text: #e8dfc8;
   --text-muted: #6a6a7a;
   --text-dim: #4a4a5a;
+
+  /* ── Semantic colors ── */
   --blue: #4a7fc4;
   --green: #4a9a5a;
+  --green-dark: #2a5a30;
+  --green-light: #80c880;
+  --orange: #e67e22;
+  --purple: #8080c0;
+  --purple-light: #a0a0e8;
 
+  /* ── Card face colors ── */
+  --card-sand-bg: linear-gradient(160deg, #fdf8ec, #f5edd6);
+  --card-sand-text: #8a6010;
+  --card-blood-bg: linear-gradient(160deg, #fdf0f0, #f5e0e0);
+  --card-blood-text: #8b1a1a;
+  --card-sylop-bg: linear-gradient(160deg, #f0f4ff, #e5ecfa);
+  --card-sylop-text: #2a4a8a;
+  --card-default-bg: #f5f0e8;
+  --card-default-border: #ddd;
+  --card-back-bg: linear-gradient(135deg, #1a1a2a, #0e0e18);
+  --card-back-inner-border: #2a2a40;
+
+  /* ── Error / warning ── */
+  --error-bg: linear-gradient(135deg, #4a1a0a, #5a2a10);
+  --error-border: var(--orange);
+  --error-text: #fdd;
+  --error-text-light: #fcc;
+
+  /* ── Spacing scale ── */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.4rem;
+  --space-sm: 0.6rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* ── Border radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 100px;
+
+  /* ── Shadows ── */
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-glow-gold: 0 0 16px rgba(200, 168, 75, 0.12);
+  --shadow-glow-gold-lg: 0 0 40px rgba(200, 168, 75, 0.35);
+  --shadow-panel: 0 1px 4px rgba(0,0,0,0.3);
+
+  /* ── Z-index scale ── */
+  --z-base: 0;
+  --z-overlay: 100;
+  --z-banner: 1000;
+  --z-modal: 9000;
+  --z-toast: 9999;
+
+  /* ── Breakpoints (for reference, actual use in @media) ── */
+  /* mobile: 480px, tablet: 768px, desktop: 960px */
+
+  /* ── Typography ── */
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
@@ -42,7 +109,7 @@ button {
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-bright);
   background: var(--surface2);
   color: var(--text);
@@ -64,7 +131,7 @@ input {
   border: 1px solid var(--border-bright);
   color: var(--text);
   padding: 0.55rem 0.85rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   width: 100%;
   outline: none;
   transition: border-color 0.15s;
@@ -75,5 +142,5 @@ input::placeholder { color: var(--text-dim); }
 .error {
   color: var(--blood-light);
   font-size: 0.85rem;
-  margin-top: 0.25rem;
+  margin-top: var(--space-2xs);
 }

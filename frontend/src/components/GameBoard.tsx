@@ -137,11 +137,11 @@ export function GameBoard({
 
           <div className="hand-cards-row">
             <div className="hand-card-slot">
-              <span className="hand-card-suit-label" style={{ color: "var(--gold)" }}>Sand</span>
+              <span className="hand-card-suit-label sand">Sand</span>
               <CardDisplay card={state.yourHand.sandCard} />
             </div>
             <div className="hand-card-slot">
-              <span className="hand-card-suit-label" style={{ color: "var(--blood-light)" }}>Blood</span>
+              <span className="hand-card-suit-label blood">Blood</span>
               <CardDisplay card={state.yourHand.bloodCard} />
             </div>
           </div>
@@ -191,20 +191,20 @@ export function GameBoard({
 
       {/* ── Opponents' hidden cards (during play, not your hand) ── */}
       {state.phase === "turn" && (
-        <section className="hand-section" style={{ opacity: 0.6 }}>
+        <section className="hand-section opponents-section">
           <div className="hand-section-header">
             <div className="hand-section-title">Opponents</div>
           </div>
-          <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
+          <div className="opponents-grid">
             {state.players
               .filter((p) => p.id !== playerId && !p.eliminated)
               .map((p) => (
-                <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-                  <div className="hand-cards-row" style={{ marginBottom: 0 }}>
+                <div key={p.id} className="opponent-slot">
+                  <div className="opponent-cards">
                     <CardBack />
                     <CardBack />
                   </div>
-                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{p.name}</span>
+                  <span className="opponent-name">{p.name}</span>
                 </div>
               ))}
           </div>
@@ -263,8 +263,8 @@ export function GameBoard({
           </table>
 
           {state.phase === "round_end" && (
-            <div style={{ marginTop: "1rem" }}>
-              <button className="btn-primary" onClick={onNextRound}>Next Round →</button>
+            <div className="round-result-actions">
+              <button className="btn-primary" onClick={onNextRound}>Next Round</button>
             </div>
           )}
         </section>
