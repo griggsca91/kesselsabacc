@@ -5,6 +5,7 @@ import { AuthPage } from "./components/AuthPage";
 import { useGame } from "./hooks/useGame";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
+import { ProfilePage } from "./components/ProfilePage";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ErrorBanner } from "./components/ErrorBanner";
 import "./App.css";
@@ -12,6 +13,7 @@ import "./App.css";
 function AppInner() {
   const { user, token, isLoading, logout } = useAuth();
   const [guestMode, setGuestMode] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   const {
     gameState,
@@ -51,6 +53,21 @@ function AppInner() {
     return <AuthPage onGuestPlay={() => setGuestMode(true)} />;
   }
 
+  if (!gameState && profileUserId) {
+    return (
+      <>
+        <ErrorBanner message={error} onDismiss={clearError} />
+        <ProfilePage
+          userId={profileUserId}
+          isOwnProfile={profileUserId === user?.id}
+          token={token}
+          onBack={() => setProfileUserId(null)}
+          onViewProfile={(id) => setProfileUserId(id)}
+        />
+      </>
+    );
+  }
+
   if (!gameState) {
     return (
       <>
@@ -66,6 +83,7 @@ function AppInner() {
             logout();
             setGuestMode(false);
           }}
+          onViewProfile={(id) => setProfileUserId(id)}
         />
       </>
     );

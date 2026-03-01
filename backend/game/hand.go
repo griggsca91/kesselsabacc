@@ -10,10 +10,10 @@ const (
 )
 
 type HandResult struct {
-	Rank       HandRank `json:"rank"`
-	Value      int      `json:"value"` // pair value for Sabacc, difference for NoSabacc
-	SandCard   Card     `json:"sandCard"`
-	BloodCard  Card     `json:"bloodCard"`
+	Rank      HandRank `json:"rank"`
+	Value     int      `json:"value"` // pair value for Sabacc, difference for NoSabacc
+	SandCard  Card     `json:"sandCard"`
+	BloodCard Card     `json:"bloodCard"`
 }
 
 // ResolveHand computes the final HandResult for a pair of cards.
@@ -51,6 +51,20 @@ func CompareHands(a, b HandResult) int {
 		return 1
 	}
 	return 0
+}
+
+// HandRankName returns a string name for a HandRank value.
+func HandRankName(rank HandRank) string {
+	switch rank {
+	case RankPureSabacc:
+		return "pure_sabacc"
+	case RankSabacc:
+		return "sabacc"
+	case RankNoSabacc:
+		return "no_sabacc"
+	default:
+		return "unknown"
+	}
 }
 
 // EffectiveValue returns the resolved numeric value of a card given the

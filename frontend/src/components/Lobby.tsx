@@ -13,6 +13,8 @@ interface LobbyProps {
   token?: string | null;
   /** Callback to log out. */
   onLogout?: () => void;
+  /** Callback to view a player's profile. */
+  onViewProfile?: (userId: string) => void;
 }
 
 export function Lobby({
@@ -23,6 +25,7 @@ export function Lobby({
   isAuthenticated,
   token,
   onLogout,
+  onViewProfile,
 }: LobbyProps) {
   const [name, setName] = useState(displayName ?? "");
   const [joinCode, setJoinCode] = useState("");
@@ -80,6 +83,11 @@ export function Lobby({
               <button className="btn-ghost" onClick={() => setMode("join")}>
                 Join Room
               </button>
+              {isAuthenticated && onViewProfile && (
+                <button className="btn-ghost" onClick={() => onViewProfile(playerId)}>
+                  My Profile
+                </button>
+              )}
               {isAuthenticated && onLogout && (
                 <button className="btn-ghost" onClick={onLogout}>
                   Log Out
