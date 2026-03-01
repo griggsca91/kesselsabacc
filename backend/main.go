@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sabacc/api"
+	"sabacc/auth"
 	"sabacc/db"
 	"sabacc/room"
 )
@@ -13,6 +14,7 @@ import (
 func main() {
 	// --- Optional database initialization ---
 	var repo *db.Repository
+	var authSvc *auth.AuthService
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL != "" {
 		conn, err := db.Connect(databaseURL)
@@ -27,14 +29,19 @@ func main() {
 
 		repo = db.NewRepository(conn)
 		log.Println("Database initialized successfully")
+
+		// Auth service requires a database
+		adapter := auth.NewDBAdapter(repo)
+		authSvc = auth.NewAuthService(adapter)
+		log.Println("Auth service initialized")
 	} else {
-		log.Println("WARNING: DATABASE_URL not set — running without database persistence")
+		log.Println("WARNING: DATABASE_URL not set — running without database persistence or auth")
 	}
 
 	hub := room.NewHub(repo)
 	go hub.Run()
 
-	handler := api.NewHandler(hub, repo)
+	handler := api.NewHandler(hub, repo, authSvc)
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
@@ -58,7 +65,7 @@ func main() {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
 				return

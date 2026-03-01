@@ -14,6 +14,13 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 const BASE_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 16000;
 
+interface UseGameOptions {
+  /** Explicit player ID (from auth or guest). Falls back to localStorage UUID. */
+  playerId?: string;
+  /** JWT auth token. When provided it is sent on the WebSocket connection and REST calls. */
+  token?: string | null;
+}
+
 interface UseGameReturn {
   gameState: GameState | null;
   error: string | null;
@@ -53,8 +60,10 @@ function friendlyErrorMessage(raw: string): string {
   return raw;
 }
 
-export function useGame(): UseGameReturn {
-  const playerId = getOrCreatePlayerId();
+export function useGame(opts: UseGameOptions = {}): UseGameReturn {
+  const playerId = opts.playerId || getOrCreatePlayerId();
+  const authToken = opts.token ?? null;
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] =
@@ -117,9 +126,12 @@ export function useGame(): UseGameReturn {
         wsRef.current = null;
       }
 
-      const ws = new WebSocket(
-        `${WS}/ws?playerId=${playerId}&roomCode=${code}`
-      );
+      let url = `${WS}/ws?playerId=${playerId}&roomCode=${code}`;
+      if (authToken) {
+        url += `&token=${encodeURIComponent(authToken)}`;
+      }
+
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -159,7 +171,7 @@ export function useGame(): UseGameReturn {
         }
       };
     },
-    [playerId, clearReconnectTimer, scheduleReconnect]
+    [playerId, authToken, clearReconnectTimer, scheduleReconnect]
   );
 
   // Manual reconnect (e.g. from a "Retry" button)
@@ -189,12 +201,21 @@ export function useGame(): UseGameReturn {
     wsRef.current?.send(JSON.stringify({ type, payload }));
   }, []);
 
+  /** Build common headers for REST calls. */
+  const headers = useCallback((): Record<string, string> => {
+    const h: Record<string, string> = { "Content-Type": "application/json" };
+    if (authToken) {
+      h["Authorization"] = `Bearer ${authToken}`;
+    }
+    return h;
+  }, [authToken]);
+
   const createRoom = useCallback(
     async (name: string) => {
       try {
         const res = await fetch(`${API}/rooms`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers(),
           body: JSON.stringify({ playerId, playerName: name }),
         });
         if (!res.ok) {
@@ -211,7 +232,7 @@ export function useGame(): UseGameReturn {
         setError("Unable to connect to server. Please check your connection.");
       }
     },
-    [playerId, connectWs]
+    [playerId, headers, connectWs]
   );
 
   const joinRoom = useCallback(
@@ -219,7 +240,7 @@ export function useGame(): UseGameReturn {
       try {
         const res = await fetch(`${API}/rooms/${code}/join`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers(),
           body: JSON.stringify({ playerId, playerName: name }),
         });
         if (!res.ok) {
@@ -236,7 +257,7 @@ export function useGame(): UseGameReturn {
         setError("Unable to connect to server. Please check your connection.");
       }
     },
-    [playerId, connectWs]
+    [playerId, headers, connectWs]
   );
 
   const startGame = useCallback(() => send("start_game", {}), [send]);
