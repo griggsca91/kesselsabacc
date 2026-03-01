@@ -20,6 +20,7 @@ interface UseGameReturn {
   connectionStatus: ConnectionStatus;
   playerId: string;
   roomCode: string;
+  clearError: () => void;
   createRoom: (name: string) => Promise<void>;
   joinRoom: (code: string, name: string) => Promise<void>;
   startGame: () => void;
@@ -36,6 +37,20 @@ function getOrCreatePlayerId(): string {
     localStorage.setItem("sabacc_player_id", id);
   }
   return id;
+}
+
+function friendlyErrorMessage(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes("room not found") || lower.includes("no room")) {
+    return "Room not found. Check the code and try again.";
+  }
+  if (lower.includes("room is full") || lower.includes("full")) {
+    return "This room is full. Try a different room.";
+  }
+  if (lower.includes("already started") || lower.includes("game in progress")) {
+    return "This game has already started. You cannot join right now.";
+  }
+  return raw;
 }
 
 export function useGame(): UseGameReturn {
@@ -56,6 +71,8 @@ export function useGame(): UseGameReturn {
   useEffect(() => {
     roomCodeRef.current = roomCode;
   }, [roomCode]);
+
+  const clearError = useCallback(() => setError(null), []);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current !== null) {
@@ -124,17 +141,21 @@ export function useGame(): UseGameReturn {
 
       ws.onerror = () => {
         // onerror is always followed by onclose, so reconnect logic lives there.
-        // We only set a transient error message here.
-        setError("WebSocket connection error");
+        setError("Unable to connect to server. Please check your connection.");
       };
 
       ws.onmessage = (event) => {
-        const envelope: ServerEnvelope = JSON.parse(event.data);
-        if (envelope.type === "game_state") {
-          setGameState(envelope.payload as GameState);
-          setError(null);
-        } else if (envelope.type === "error") {
-          setError((envelope.payload as { message: string }).message);
+        try {
+          const envelope: ServerEnvelope = JSON.parse(event.data);
+          if (envelope.type === "game_state") {
+            setGameState(envelope.payload as GameState);
+            setError(null);
+          } else if (envelope.type === "error") {
+            const msg = (envelope.payload as { message: string }).message;
+            setError(friendlyErrorMessage(msg));
+          }
+        } catch {
+          setError("Received an unexpected message from the server.");
         }
       };
     },
@@ -170,34 +191,50 @@ export function useGame(): UseGameReturn {
 
   const createRoom = useCallback(
     async (name: string) => {
-      const res = await fetch(`${API}/rooms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, playerName: name }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const { code } = await res.json();
-      setRoomCode(code);
-      roomCodeRef.current = code;
-      manualDisconnectRef.current = false;
-      connectWs(code);
+      try {
+        const res = await fetch(`${API}/rooms`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId, playerName: name }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          setError(friendlyErrorMessage(text));
+          return;
+        }
+        const { code } = await res.json();
+        setRoomCode(code);
+        roomCodeRef.current = code;
+        manualDisconnectRef.current = false;
+        connectWs(code);
+      } catch {
+        setError("Unable to connect to server. Please check your connection.");
+      }
     },
     [playerId, connectWs]
   );
 
   const joinRoom = useCallback(
     async (code: string, name: string) => {
-      const res = await fetch(`${API}/rooms/${code}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerId, playerName: name }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const upper = code.toUpperCase();
-      setRoomCode(upper);
-      roomCodeRef.current = upper;
-      manualDisconnectRef.current = false;
-      connectWs(upper);
+      try {
+        const res = await fetch(`${API}/rooms/${code}/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ playerId, playerName: name }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          setError(friendlyErrorMessage(text));
+          return;
+        }
+        const upper = code.toUpperCase();
+        setRoomCode(upper);
+        roomCodeRef.current = upper;
+        manualDisconnectRef.current = false;
+        connectWs(upper);
+      } catch {
+        setError("Unable to connect to server. Please check your connection.");
+      }
     },
     [playerId, connectWs]
   );
@@ -224,6 +261,7 @@ export function useGame(): UseGameReturn {
     connectionStatus,
     playerId,
     roomCode,
+    clearError,
     createRoom,
     joinRoom,
     startGame,

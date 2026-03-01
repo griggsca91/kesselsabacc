@@ -2,12 +2,14 @@ import { useGame } from "./hooks/useGame";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { ConnectionBanner } from "./components/ConnectionBanner";
+import { ErrorBanner } from "./components/ErrorBanner";
 import "./App.css";
 
 function App() {
   const {
     gameState,
     error,
+    clearError,
     connectionStatus,
     playerId,
     roomCode,
@@ -22,17 +24,20 @@ function App() {
 
   if (!gameState) {
     return (
-      <Lobby
-        onCreateRoom={createRoom}
-        onJoinRoom={joinRoom}
-        error={error}
-      />
+      <>
+        <ErrorBanner message={error} onDismiss={clearError} />
+        <Lobby
+          onCreateRoom={createRoom}
+          onJoinRoom={joinRoom}
+        />
+      </>
     );
   }
 
   return (
     <>
       <ConnectionBanner status={connectionStatus} onRetry={reconnect} />
+      <ErrorBanner message={error} onDismiss={clearError} />
       <GameBoard
         state={gameState}
         playerId={playerId}
@@ -41,7 +46,6 @@ function App() {
         onDraw={draw}
         onStand={stand}
         onNextRound={nextRound}
-        error={error}
       />
     </>
   );
