@@ -1,12 +1,14 @@
 import { useGame } from "./hooks/useGame";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
+import { ConnectionBanner } from "./components/ConnectionBanner";
 import "./App.css";
 
 function App() {
   const {
     gameState,
     error,
+    connectionStatus,
     playerId,
     roomCode,
     createRoom,
@@ -15,6 +17,7 @@ function App() {
     draw,
     stand,
     nextRound,
+    reconnect,
   } = useGame();
 
   if (!gameState) {
@@ -28,16 +31,19 @@ function App() {
   }
 
   return (
-    <GameBoard
-      state={gameState}
-      playerId={playerId}
-      roomCode={roomCode}
-      onStartGame={startGame}
-      onDraw={draw}
-      onStand={stand}
-      onNextRound={nextRound}
-      error={error}
-    />
+    <>
+      <ConnectionBanner status={connectionStatus} onRetry={reconnect} />
+      <GameBoard
+        state={gameState}
+        playerId={playerId}
+        roomCode={roomCode}
+        onStartGame={startGame}
+        onDraw={draw}
+        onStand={stand}
+        onNextRound={nextRound}
+        error={error}
+      />
+    </>
   );
 }
 

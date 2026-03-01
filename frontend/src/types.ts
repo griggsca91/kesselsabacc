@@ -1,3 +1,5 @@
+export type ConnectionStatus = "connected" | "reconnecting" | "disconnected";
+
 export type CardSuit = "sand" | "blood";
 export type CardKind = "value" | "impostor" | "sylop";
 export type ShiftToken =
