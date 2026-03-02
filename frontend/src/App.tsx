@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { AuthProvider } from "./context/AuthContext";
+import { SoundContext } from "./context/SoundContext";
 import { useAuth } from "./hooks/useAuth";
 import { AuthPage } from "./components/AuthPage";
 import { useGame } from "./hooks/useGame";
 import { useAvatar } from "./hooks/useAvatar";
 import { useToast } from "./hooks/useToast";
 import { useGameEvents } from "./hooks/useGameEvents";
+import { useSoundEngine } from "./hooks/useSoundEngine";
+import { useGameSounds } from "./hooks/useGameSounds";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
+import { MuteToggle } from "./components/MuteToggle";
 import { ProfilePage } from "./components/ProfilePage";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ErrorBanner } from "./components/ErrorBanner";
@@ -40,7 +44,9 @@ function AppInner() {
 
   const { avatarId } = useAvatar();
   const { toasts, addToast } = useToast();
+  const sound = useSoundEngine();
   useGameEvents(gameState, playerId, addToast);
+  useGameSounds(gameState, playerId, sound);
 
   // Show loading spinner while checking stored token
   if (isLoading) {
@@ -97,7 +103,7 @@ function AppInner() {
   }
 
   return (
-    <>
+    <SoundContext.Provider value={sound}>
       <ConnectionBanner status={connectionStatus} onRetry={reconnect} />
       <ErrorBanner message={error} onDismiss={clearError} />
       <GameBoard
@@ -110,8 +116,9 @@ function AppInner() {
         onStand={stand}
         onNextRound={nextRound}
       />
+      <MuteToggle />
       <ToastContainer toasts={toasts} />
-    </>
+    </SoundContext.Provider>
   );
 }
 
