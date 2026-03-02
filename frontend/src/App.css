@@ -336,6 +336,44 @@
   margin-top: var(--space-sm);
 }
 
+/* ─── Flip card animation ─── */
+.flip-card-wrapper {
+  perspective: 600px;
+  display: inline-block;
+}
+
+.flip-inner {
+  position: relative;
+  width: 88px;
+  height: 124px;
+  transform-style: preserve-3d;
+}
+.flip-sm .flip-inner {
+  width: 52px;
+  height: 72px;
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-back {
+  transform: rotateY(0deg);
+}
+
+.flip-front {
+  transform: rotateY(180deg);
+}
+
+/* ─── Chip counter ─── */
+.chip-count-animated {
+  display: inline-block;
+  transition: color 0.3s ease;
+}
+
 /* ─────────────────────────────────────────
    CARDS
 ───────────────────────────────────────── */
@@ -1332,6 +1370,16 @@
     height: 92px;
   }
 
+  /* Flip card mobile sizing */
+  .flip-inner {
+    width: 76px;
+    height: 108px;
+  }
+  .flip-sm .flip-inner {
+    width: 52px;
+    height: 72px;
+  }
+
   .actions-row {
     gap: var(--space-xs);
   }
@@ -1404,5 +1452,18 @@
     font-size: 0.82rem;
     padding: 0.6rem var(--space-md);
     gap: var(--space-sm);
+  }
+
+  .phase-overlay-text {
+    font-size: 1.8rem;
+  }
+  .phase-overlay-text--reveal {
+    font-size: 2rem;
+  }
+  .phase-overlay-text--gameover {
+    font-size: 2.2rem;
+  }
+  .phase-overlay-subtitle {
+    font-size: 1rem;
   }
 }

@@ -1,5 +1,8 @@
+import { useRef } from "react";
+import { motion } from "framer-motion";
 import type { GameState, HandResult, ShiftToken } from "../types";
 import { CardDisplay, CardBack } from "./CardDisplay";
+import { AnimatedCard, FlipCard, ChipCounter } from "./AnimatedCard";
 
 interface GameBoardProps {
   state: GameState;
@@ -41,6 +44,15 @@ export function GameBoard({
   const me = state.players.find((p) => p.id === playerId);
   const isMyTurn = state.currentTurnPlayerId === playerId;
   const isReveal = state.phase === "reveal" || state.phase === "round_end" || state.phase === "game_over";
+
+  // Track whether we already animated the deal for this round so the
+  // stagger delay only fires once per round, not on every re-render.
+  const dealtRoundRef = useRef<number>(-1);
+  const isNewDeal = state.round !== dealtRoundRef.current &&
+    (state.phase === "dealing" || state.phase === "turn");
+  if (isNewDeal) {
+    dealtRoundRef.current = state.round;
+  }
 
   return (
     <div className="gameboard">
@@ -88,7 +100,7 @@ export function GameBoard({
               </div>
 
               <div className="player-chips-row">
-                <span className="chip-count">{p.chips}</span>
+                <ChipCounter value={p.chips} />
                 <span className="chip-label">chips</span>
                 {p.invested > 0 && (
                   <span className="invested-badge">+{p.invested} in</span>
@@ -97,8 +109,8 @@ export function GameBoard({
 
               {isReveal && p.sandCard && p.bloodCard && (
                 <div className="reveal-mini-cards">
-                  <CardDisplay card={p.sandCard} size="sm" />
-                  <CardDisplay card={p.bloodCard} size="sm" />
+                  <FlipCard card={p.sandCard} size="sm" isRevealed={isReveal} />
+                  <FlipCard card={p.bloodCard} size="sm" isRevealed={isReveal} />
                 </div>
               )}
             </div>
@@ -138,11 +150,17 @@ export function GameBoard({
           <div className="hand-cards-row">
             <div className="hand-card-slot">
               <span className="hand-card-suit-label sand">Sand</span>
-              <CardDisplay card={state.yourHand.sandCard} />
+              <AnimatedCard
+                card={state.yourHand.sandCard}
+                dealDelay={isNewDeal ? 0 : 0}
+              />
             </div>
             <div className="hand-card-slot">
               <span className="hand-card-suit-label blood">Blood</span>
-              <CardDisplay card={state.yourHand.bloodCard} />
+              <AnimatedCard
+                card={state.yourHand.bloodCard}
+                dealDelay={isNewDeal ? 200 : 0}
+              />
             </div>
           </div>
 
@@ -198,11 +216,23 @@ export function GameBoard({
           <div className="opponents-grid">
             {state.players
               .filter((p) => p.id !== playerId && !p.eliminated)
-              .map((p) => (
+              .map((p, pIdx) => (
                 <div key={p.id} className="opponent-slot">
                   <div className="opponent-cards">
-                    <CardBack />
-                    <CardBack />
+                    <motion.div
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: isNewDeal ? 0.05 * pIdx : 0 }}
+                    >
+                      <CardBack />
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 24 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: isNewDeal ? 0.05 * pIdx + 0.15 : 0 }}
+                    >
+                      <CardBack />
+                    </motion.div>
                   </div>
                   <span className="opponent-name">{p.name}</span>
                 </div>
