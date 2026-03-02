@@ -5,10 +5,11 @@ interface CardDisplayProps {
   size?: "normal" | "sm";
 }
 
+const suitSymbol: Record<string, string> = { sand: "◆", blood: "♦" };
 const suitLabel: Record<string, string> = { sand: "Sand", blood: "Blood" };
 
 function centerValue(card: Card): string {
-  if (card.kind === "sylop") return "●";
+  if (card.kind === "sylop") return "◈";
   if (card.kind === "impostor") return "?";
   return String(card.value);
 }
@@ -20,7 +21,7 @@ function centerLabel(card: Card): string {
 }
 
 function cornerValue(card: Card): string {
-  if (card.kind === "sylop") return "●";
+  if (card.kind === "sylop") return "◈";
   if (card.kind === "impostor") return "?";
   return String(card.value);
 }
@@ -32,9 +33,18 @@ export function CardDisplay({ card, size = "normal" }: CardDisplayProps) {
 
   return (
     <div className={`card${suitClass}${kindClass}${sizeClass}`}>
+      {/* Inner pattern overlay for texture */}
+      <div className="card-pattern" />
+
+      {/* Sylop shimmer overlay */}
+      {card.kind === "sylop" && <div className="card-sylop-shimmer" />}
+
+      {/* Impostor mask overlay */}
+      {card.kind === "impostor" && <div className="card-impostor-overlay" />}
+
       <div className="card-corner">
         <span className="card-corner-value">{cornerValue(card)}</span>
-        <span className="card-corner-suit">{suitLabel[card.suit]}</span>
+        <span className="card-corner-suit">{suitSymbol[card.suit]}</span>
       </div>
 
       <div className="card-center">
@@ -44,7 +54,7 @@ export function CardDisplay({ card, size = "normal" }: CardDisplayProps) {
 
       <div className="card-corner card-corner-br">
         <span className="card-corner-value">{cornerValue(card)}</span>
-        <span className="card-corner-suit">{suitLabel[card.suit]}</span>
+        <span className="card-corner-suit">{suitSymbol[card.suit]}</span>
       </div>
     </div>
   );
@@ -55,7 +65,9 @@ export function CardBack({ size = "normal" }: { size?: "normal" | "sm" }) {
   return (
     <div className={`card-back${sizeClass}`}>
       <div className="card-back-pattern">
+        <div className="card-back-diamond" />
         <span className="card-back-icon">✦</span>
+        <div className="card-back-diamond card-back-diamond-2" />
       </div>
     </div>
   );
