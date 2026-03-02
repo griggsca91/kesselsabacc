@@ -1,5 +1,8 @@
+import { AnimatePresence, motion } from "framer-motion";
 import type { GameState, HandResult, ShiftToken } from "../types";
 import { CardDisplay, CardBack } from "./CardDisplay";
+import { PhaseOverlay } from "./PhaseOverlay";
+import { usePhaseTransition } from "../hooks/usePhaseTransition";
 import { Avatar, avatarForPlayerId } from "./AvatarPicker";
 
 interface GameBoardProps {
@@ -45,9 +48,49 @@ export function GameBoard({
   const isMyTurn = state.currentTurnPlayerId === playerId;
   const isReveal = state.phase === "reveal" || state.phase === "round_end" || state.phase === "game_over";
 
+  // Phase transition overlay
+  const winnerName =
+    state.players.find((p) => p.id === state.winnerId)?.name ?? undefined;
+  const { showOverlay, overlayPhase, overlayRound } = usePhaseTransition(
+    state.phase,
+    state.round,
+  );
+
+  // Key for AnimatePresence content transitions -- group related phases
+  // to avoid re-animating when the content is conceptually the same.
+  function phaseGroupKey(): string {
+    switch (state.phase) {
+      case "lobby":
+        return "lobby";
+      case "dealing":
+      case "turn":
+        return "gameplay";
+      case "reveal":
+      case "round_end":
+        return "results";
+      case "game_over":
+        return "gameover";
+      default:
+        return state.phase;
+    }
+  }
+
   return (
     <div className="gameboard">
 
+      {/* ── Phase transition overlay ── */}
+      <AnimatePresence>
+        {showOverlay && (
+          <PhaseOverlay
+            key={`overlay-${overlayPhase}-${overlayRound}`}
+            phase={overlayPhase}
+            round={overlayRound}
+            winnerName={winnerName}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Header ── */}
       <header className="game-header">
         <h2 className="game-header-title">Kessel Sabacc</h2>
         <div className="game-meta">
@@ -63,6 +106,7 @@ export function GameBoard({
         </div>
       </header>
 
+      {/* ── Players bar ── */}
       <section className="players-bar">
         {state.players.map((p) => {
           const isActive = state.currentTurnPlayerId === p.id && state.phase === "turn";
@@ -112,173 +156,193 @@ export function GameBoard({
         })}
       </section>
 
-      {state.phase === "lobby" && (
-        <section className="lobby-waiting">
-          <div className="lobby-waiting-title">Waiting for players</div>
-          <div className="player-count">{state.players.length} / 4</div>
-          {me?.isHost ? (
-            state.players.length >= 2 ? (
-              <button className="btn-primary" onClick={onStartGame}>Start Game</button>
-            ) : (
-              <p>Share the room code {"\u2014"} need at least 2 players</p>
-            )
-          ) : (
-            <p>Waiting for the host to start the game{"\u2026"}</p>
+      {/* ── Phase content with animated transitions ── */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={phaseGroupKey()}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
+        >
+
+          {/* ── Lobby waiting ── */}
+          {state.phase === "lobby" && (
+            <section className="lobby-waiting">
+              <div className="lobby-waiting-title">Waiting for players</div>
+              <div className="player-count">{state.players.length} / 4</div>
+              {me?.isHost ? (
+                state.players.length >= 2 ? (
+                  <button className="btn-primary" onClick={onStartGame}>Start Game</button>
+                ) : (
+                  <p>Share the room code {"\u2014"} need at least 2 players</p>
+                )
+              ) : (
+                <p>Waiting for the host to start the game{"\u2026"}</p>
+              )}
+            </section>
           )}
-        </section>
-      )}
 
-      {state.yourHand && state.phase !== "lobby" && (
-        <section className="hand-section">
-          <div className="hand-section-header">
-            <div className="hand-section-title">Your Hand</div>
-            {me && (
-              <div className="hand-section-title">
-                {me.chips} chips &nbsp;{"\u00B7"}&nbsp; {state.yourHand.tokens.length} tokens
-              </div>
-            )}
-          </div>
-
-          <div className="hand-cards-row">
-            <div className="hand-card-slot">
-              <span className="hand-card-suit-label sand">Sand</span>
-              <CardDisplay card={state.yourHand.sandCard} />
-            </div>
-            <div className="hand-card-slot">
-              <span className="hand-card-suit-label blood">Blood</span>
-              <CardDisplay card={state.yourHand.bloodCard} />
-            </div>
-          </div>
-
-          {state.phase === "turn" && isMyTurn && (
-            <>
-              <div className="actions-row">
-                <button className="btn-draw-sand" onClick={() => onDraw("sand")}>
-                  Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span>
-                </button>
-                <button className="btn-draw-blood" onClick={() => onDraw("blood")}>
-                  Draw Blood <span className="btn-chip-cost">{"\u22121 chip"}</span>
-                </button>
-                <button className="btn-stand" onClick={() => onStand()}>
-                  Stand
-                </button>
-              </div>
-
-              {state.yourHand.tokens.length > 0 && (
-                <div className="tokens-section">
-                  <div className="tokens-label">Shift Tokens</div>
-                  <div className="tokens-row">
-                    {state.yourHand.tokens.map((t) => (
-                      <button key={t} className="btn-token" onClick={() => onStand(t)}>
-                        {TOKEN_LABELS[t]}
-                      </button>
-                    ))}
+          {/* ── Your hand ── */}
+          {state.yourHand && state.phase !== "lobby" && (
+            <section className="hand-section">
+              <div className="hand-section-header">
+                <div className="hand-section-title">Your Hand</div>
+                {me && (
+                  <div className="hand-section-title">
+                    {me.chips} chips &nbsp;{"\u00B7"}&nbsp; {state.yourHand.tokens.length} tokens
                   </div>
+                )}
+              </div>
+
+              <div className="hand-cards-row">
+                <div className="hand-card-slot">
+                  <span className="hand-card-suit-label sand">Sand</span>
+                  <CardDisplay card={state.yourHand.sandCard} />
+                </div>
+                <div className="hand-card-slot">
+                  <span className="hand-card-suit-label blood">Blood</span>
+                  <CardDisplay card={state.yourHand.bloodCard} />
+                </div>
+              </div>
+
+              {/* Actions — my turn */}
+              {state.phase === "turn" && isMyTurn && (
+                <>
+                  <div className="actions-row">
+                    <button className="btn-draw-sand" onClick={() => onDraw("sand")}>
+                      Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span>
+                    </button>
+                    <button className="btn-draw-blood" onClick={() => onDraw("blood")}>
+                      Draw Blood <span className="btn-chip-cost">{"\u22121 chip"}</span>
+                    </button>
+                    <button className="btn-stand" onClick={() => onStand()}>
+                      Stand
+                    </button>
+                  </div>
+
+                  {state.yourHand.tokens.length > 0 && (
+                    <div className="tokens-section">
+                      <div className="tokens-label">Shift Tokens</div>
+                      <div className="tokens-row">
+                        {state.yourHand.tokens.map((t) => (
+                          <button key={t} className="btn-token" onClick={() => onStand(t)}>
+                            {TOKEN_LABELS[t]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Waiting for opponent */}
+              {state.phase === "turn" && !isMyTurn && (
+                <div className="waiting-message">
+                  Waiting for{" "}
+                  <span className="waiting-name">
+                    {state.players.find((p) => p.id === state.currentTurnPlayerId)?.name ?? "opponent"}
+                  </span>
+                  {"\u2026"}
                 </div>
               )}
-            </>
+            </section>
           )}
 
-          {state.phase === "turn" && !isMyTurn && (
-            <div className="waiting-message">
-              Waiting for{" "}
-              <span className="waiting-name">
-                {state.players.find((p) => p.id === state.currentTurnPlayerId)?.name ?? "opponent"}
-              </span>
-              {"\u2026"}
-            </div>
+          {/* ── Opponents' hidden cards (during play, not your hand) ── */}
+          {state.phase === "turn" && (
+            <section className="hand-section opponents-section">
+              <div className="hand-section-header">
+                <div className="hand-section-title">Opponents</div>
+              </div>
+              <div className="opponents-grid">
+                {state.players
+                  .filter((p) => p.id !== playerId && !p.eliminated)
+                  .map((p) => (
+                    <div key={p.id} className="opponent-slot">
+                      <div className="opponent-cards">
+                        <CardBack />
+                        <CardBack />
+                      </div>
+                      <span className="opponent-name">{p.name}</span>
+                    </div>
+                  ))}
+              </div>
+            </section>
           )}
-        </section>
-      )}
 
-      {state.phase === "turn" && (
-        <section className="hand-section opponents-section">
-          <div className="hand-section-header">
-            <div className="hand-section-title">Opponents</div>
-          </div>
-          <div className="opponents-grid">
-            {state.players
-              .filter((p) => p.id !== playerId && !p.eliminated)
-              .map((p) => (
-                <div key={p.id} className="opponent-slot">
-                  <div className="opponent-cards">
-                    <CardBack />
-                    <CardBack />
-                  </div>
-                  <span className="opponent-name">{p.name}</span>
+          {/* ── Round result ── */}
+          {(state.phase === "round_end" || state.phase === "reveal") && state.lastResult && (
+            <section className="round-result">
+              <div className="round-result-header">
+                <div className="round-result-title">Round {state.round} Result</div>
+                <div className="round-winner">
+                  {state.lastResult.winnerIds.length > 1 ? "Tie" : (
+                    state.players.find((p) => state.lastResult!.winnerIds.includes(p.id))?.name
+                  )} wins
                 </div>
-              ))}
-          </div>
-        </section>
-      )}
+              </div>
 
-      {(state.phase === "round_end" || state.phase === "reveal") && state.lastResult && (
-        <section className="round-result">
-          <div className="round-result-header">
-            <div className="round-result-title">Round {state.round} Result</div>
-            <div className="round-winner">
-              {state.lastResult.winnerIds.length > 1 ? "Tie" : (
-                state.players.find((p) => state.lastResult!.winnerIds.includes(p.id))?.name
-              )} wins
-            </div>
-          </div>
-
-          <table className="result-table">
-            <thead>
-              <tr>
-                <th>Player</th>
-                <th>Hand</th>
-                <th>Cards</th>
-                <th>Change</th>
-                <th>Chips</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state.players.map((p) => {
-                const hand = state.lastResult!.playerHands[p.id];
-                const change = state.lastResult!.chipChanges[p.id] ?? 0;
-                const isWinner = state.lastResult!.winnerIds.includes(p.id);
-                return (
-                  <tr key={p.id} className={isWinner ? "is-winner" : ""}>
-                    <td>{p.name}{isWinner ? " \u2605" : ""}</td>
-                    <td>{hand ? <HandRankBadge result={hand} /> : "\u2014"}</td>
-                    <td>
-                      {hand && (
-                        <div className="round-result-cards">
-                          <CardDisplay card={hand.sandCard} size="sm" />
-                          <CardDisplay card={hand.bloodCard} size="sm" />
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={change > 0 ? "chip-gain" : change < 0 ? "chip-loss" : "chip-neutral"}>
-                        {change > 0 ? `+${change}` : change}
-                      </span>
-                    </td>
-                    <td>{p.chips}</td>
+              <table className="result-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Hand</th>
+                    <th>Cards</th>
+                    <th>Change</th>
+                    <th>Chips</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {state.players.map((p) => {
+                    const hand = state.lastResult!.playerHands[p.id];
+                    const change = state.lastResult!.chipChanges[p.id] ?? 0;
+                    const isWinner = state.lastResult!.winnerIds.includes(p.id);
+                    return (
+                      <tr key={p.id} className={isWinner ? "is-winner" : ""}>
+                        <td>{p.name}{isWinner ? " \u2605" : ""}</td>
+                        <td>{hand ? <HandRankBadge result={hand} /> : "\u2014"}</td>
+                        <td>
+                          {hand && (
+                            <div className="round-result-cards">
+                              <CardDisplay card={hand.sandCard} size="sm" />
+                              <CardDisplay card={hand.bloodCard} size="sm" />
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className={change > 0 ? "chip-gain" : change < 0 ? "chip-loss" : "chip-neutral"}>
+                            {change > 0 ? `+${change}` : change}
+                          </span>
+                        </td>
+                        <td>{p.chips}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-          {state.phase === "round_end" && (
-            <div className="round-result-actions">
-              <button className="btn-primary" onClick={onNextRound}>Next Round</button>
-            </div>
+              {state.phase === "round_end" && (
+                <div className="round-result-actions">
+                  <button className="btn-primary" onClick={onNextRound}>Next Round</button>
+                </div>
+              )}
+            </section>
           )}
-        </section>
-      )}
 
-      {state.phase === "game_over" && (
-        <section className="game-over">
-          <div className="game-over-label">Game Over</div>
-          <h2 className="game-over-title">
-            {state.players.find((p) => p.id === state.winnerId)?.name ?? "Unknown"}
-          </h2>
-          <p className="game-over-winner">wins the pot</p>
-        </section>
-      )}
+          {/* ── Game over ── */}
+          {state.phase === "game_over" && (
+            <section className="game-over">
+              <div className="game-over-label">Game Over</div>
+              <h2 className="game-over-title">
+                {state.players.find((p) => p.id === state.winnerId)?.name ?? "Unknown"}
+              </h2>
+              <p className="game-over-winner">wins the pot</p>
+            </section>
+          )}
+
+        </motion.div>
+      </AnimatePresence>
 
       <div className="deck-info">
         <div className="deck-info-item">
