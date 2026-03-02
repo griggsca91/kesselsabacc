@@ -3,11 +3,13 @@ import type { GameState, HandResult, ShiftToken } from "../types";
 import { CardDisplay, CardBack } from "./CardDisplay";
 import { PhaseOverlay } from "./PhaseOverlay";
 import { usePhaseTransition } from "../hooks/usePhaseTransition";
+import { Avatar, avatarForPlayerId } from "./AvatarPicker";
 
 interface GameBoardProps {
   state: GameState;
   playerId: string;
   roomCode: string;
+  avatarId?: string;
   onStartGame: () => void;
   onDraw: (suit: "sand" | "blood", token?: ShiftToken) => void;
   onStand: (token?: ShiftToken) => void;
@@ -36,6 +38,7 @@ export function GameBoard({
   state,
   playerId,
   roomCode,
+  avatarId,
   onStartGame,
   onDraw,
   onStand,
@@ -121,9 +124,14 @@ export function GameBoard({
               {isActive && <div className="turn-indicator">Their Turn</div>}
 
               <div className="player-panel-header">
+                <Avatar
+                  avatarId={isMe && avatarId ? avatarId : avatarForPlayerId(p.id).id}
+                  size={28}
+                  active={isActive}
+                />
                 <div className="player-name">
                   {p.name}
-                  {p.isHost && <span className="player-host-star">★</span>}
+                  {p.isHost && <span className="player-host-star">{"\u2605"}</span>}
                   {isMe && <span className="player-you-tag">you</span>}
                 </div>
                 {p.stood && <span className="stood-badge">stood</span>}
@@ -167,10 +175,10 @@ export function GameBoard({
                 state.players.length >= 2 ? (
                   <button className="btn-primary" onClick={onStartGame}>Start Game</button>
                 ) : (
-                  <p>Share the room code — need at least 2 players</p>
+                  <p>Share the room code {"\u2014"} need at least 2 players</p>
                 )
               ) : (
-                <p>Waiting for the host to start the game…</p>
+                <p>Waiting for the host to start the game{"\u2026"}</p>
               )}
             </section>
           )}
@@ -182,7 +190,7 @@ export function GameBoard({
                 <div className="hand-section-title">Your Hand</div>
                 {me && (
                   <div className="hand-section-title">
-                    {me.chips} chips &nbsp;·&nbsp; {state.yourHand.tokens.length} tokens
+                    {me.chips} chips &nbsp;{"\u00B7"}&nbsp; {state.yourHand.tokens.length} tokens
                   </div>
                 )}
               </div>
@@ -203,10 +211,10 @@ export function GameBoard({
                 <>
                   <div className="actions-row">
                     <button className="btn-draw-sand" onClick={() => onDraw("sand")}>
-                      Draw Sand <span className="btn-chip-cost">−1 chip</span>
+                      Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span>
                     </button>
                     <button className="btn-draw-blood" onClick={() => onDraw("blood")}>
-                      Draw Blood <span className="btn-chip-cost">−1 chip</span>
+                      Draw Blood <span className="btn-chip-cost">{"\u22121 chip"}</span>
                     </button>
                     <button className="btn-stand" onClick={() => onStand()}>
                       Stand
@@ -235,7 +243,7 @@ export function GameBoard({
                   <span className="waiting-name">
                     {state.players.find((p) => p.id === state.currentTurnPlayerId)?.name ?? "opponent"}
                   </span>
-                  …
+                  {"\u2026"}
                 </div>
               )}
             </section>
@@ -292,8 +300,8 @@ export function GameBoard({
                     const isWinner = state.lastResult!.winnerIds.includes(p.id);
                     return (
                       <tr key={p.id} className={isWinner ? "is-winner" : ""}>
-                        <td>{p.name}{isWinner ? " ★" : ""}</td>
-                        <td>{hand ? <HandRankBadge result={hand} /> : "—"}</td>
+                        <td>{p.name}{isWinner ? " \u2605" : ""}</td>
+                        <td>{hand ? <HandRankBadge result={hand} /> : "\u2014"}</td>
                         <td>
                           {hand && (
                             <div className="round-result-cards">
