@@ -1891,6 +1891,65 @@
   }
 }
 
+
+/* ─────────────────────────────────────────
+   SHIFT TOKEN CHIPS & TOOLTIPS
+───────────────────────────────────────── */
+
+.token-chip-wrapper { position: relative; display: inline-flex; }
+
+.token-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  height: 36px; padding: 0 0.75rem; border-radius: var(--radius-pill);
+  border: 2px solid transparent; font-size: 0.78rem; font-weight: 600;
+  letter-spacing: 0.02em; cursor: default; transition: all 0.15s ease;
+  white-space: nowrap; user-select: none; background: var(--surface2); color: var(--text-muted);
+}
+.token-chip-abbrev { display: none; font-weight: 700; }
+.token-chip-name { display: inline; }
+
+.token-chip.token-economy { background: rgba(74,154,90,0.12); border-color: rgba(74,154,90,0.35); color: var(--green-light); }
+.token-chip.token-attack { background: rgba(192,57,43,0.12); border-color: rgba(192,57,43,0.35); color: var(--blood-light); }
+.token-chip.token-defense { background: rgba(74,127,196,0.12); border-color: rgba(74,127,196,0.35); color: var(--blue); }
+.token-chip.token-special { background: rgba(200,168,75,0.12); border-color: rgba(200,168,75,0.35); color: var(--gold-light); }
+
+.token-chip.interactive { cursor: pointer; }
+.token-chip.interactive:hover { transform: scale(1.05); filter: brightness(1.2); }
+
+.token-chip.selected { transform: scale(1.08); box-shadow: 0 0 12px rgba(200,168,75,0.4); }
+.token-chip.selected.token-economy { border-color: var(--green); box-shadow: 0 0 12px rgba(74,154,90,0.5); }
+.token-chip.selected.token-attack { border-color: var(--blood); box-shadow: 0 0 12px rgba(192,57,43,0.5); }
+.token-chip.selected.token-defense { border-color: var(--blue); box-shadow: 0 0 12px rgba(74,127,196,0.5); }
+.token-chip.selected.token-special { border-color: var(--gold); box-shadow: 0 0 12px rgba(200,168,75,0.5); }
+
+.token-chip.used { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; filter: grayscale(0.8); }
+.tokens-empty { text-align: center; font-size: 0.8rem; color: var(--text-dim); font-style: italic; padding: 0.25rem 0; }
+
+.token-tooltip {
+  position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+  width: 220px; background: var(--surface2); border: 1px solid var(--border-bright);
+  border-radius: var(--radius-md); padding: 0.65rem 0.75rem;
+  z-index: var(--z-tooltip, 50); box-shadow: 0 4px 16px rgba(0,0,0,0.5); pointer-events: none;
+}
+.token-tooltip-arrow {
+  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%) rotate(45deg);
+  width: 10px; height: 10px; background: var(--surface2);
+  border-right: 1px solid var(--border-bright); border-bottom: 1px solid var(--border-bright);
+}
+.token-tooltip-name { font-weight: 700; font-size: 0.82rem; color: var(--text); margin-bottom: 0.25rem; }
+.token-tooltip-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.35; margin-bottom: 0.35rem; }
+.token-tooltip-hint { font-size: 0.65rem; color: var(--text-dim); font-style: italic; }
+.token-tooltip-used { font-size: 0.65rem; color: var(--blood-light); font-weight: 600; }
+
+.token-count-badge {
+  font-size: 0.7rem; color: var(--purple-light, #b0b0ff);
+  background: rgba(80,80,160,0.12); border: 1px solid rgba(100,100,200,0.3);
+  border-radius: 3px; padding: 0.05rem 0.35rem; white-space: nowrap;
+}
+
+.btn-cancel-token { font-size: 0.8rem; background: rgba(120,120,120,0.12); border-color: rgba(160,160,160,0.35); color: var(--text-muted); padding: var(--space-xs) 0.75rem; }
+.btn-cancel-token:hover:not(:disabled) { background: rgba(120,120,120,0.22); border-color: rgba(180,180,180,0.6); color: var(--text); }
+
 /* ─────────────────────────────────────────
    TURN NOTIFICATIONS
 ───────────────────────────────────────── */

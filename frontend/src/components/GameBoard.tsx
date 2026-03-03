@@ -9,6 +9,8 @@ import { RulesOverlay } from "./RulesOverlay";
 import { HelpButton } from "./HelpButton";
 import { usePhaseTransition } from "../hooks/usePhaseTransition";
 import { Avatar, avatarForPlayerId } from "./AvatarPicker";
+import { TokenDisplay } from "./TokenDisplay";
+import { TOKEN_NAMES } from "./TokenTooltip";
 
 interface GameBoardProps {
   state: GameState;
@@ -20,18 +22,6 @@ interface GameBoardProps {
   onStand: (token?: ShiftToken) => void;
   onNextRound: () => void;
 }
-
-const TOKEN_LABELS: Record<ShiftToken, string> = {
-  free_draw: "Free Draw",
-  refund: "Refund 2",
-  general_tariff: "General Tariff",
-  markdown: "Markdown",
-  immunity: "Immunity",
-  major_fraud: "Major Fraud",
-  cook_the_books: "Cook the Books",
-  direct_transaction: "Direct Transaction",
-  prime_sabacc: "Prime Sabacc",
-};
 
 function HandRankBadge({ result }: { result: HandResult }) {
   if (result.rank === 0) return <span className="hand-rank-badge pure">Pure Sabacc</span>;
@@ -52,6 +42,7 @@ export function GameBoard({
   const me = state.players.find((p) => p.id === playerId);
   const isMyTurn = state.currentTurnPlayerId === playerId;
   const isReveal = state.phase === "reveal" || state.phase === "round_end" || state.phase === "game_over";
+  const [selectedToken, setSelectedToken] = useState<ShiftToken | null>(null);
 
   // Dramatic reveal sequence state
   const [revealComplete, setRevealComplete] = useState(false);
@@ -72,8 +63,6 @@ export function GameBoard({
     state.round,
   );
 
-  // Track whether we already animated the deal for this round so the
-  // stagger delay only fires once per round, not on every re-render.
   const dealtRoundRef = useRef<number>(-1);
   const isNewDeal = state.round !== dealtRoundRef.current &&
     (state.phase === "dealing" || state.phase === "turn");
@@ -81,8 +70,6 @@ export function GameBoard({
     dealtRoundRef.current = state.round;
   }
 
-  // Key for AnimatePresence content transitions -- group related phases
-  // to avoid re-animating when the content is conceptually the same.
   function phaseGroupKey(): string {
     switch (state.phase) {
       case "lobby":
@@ -100,10 +87,23 @@ export function GameBoard({
     }
   }
 
+  function handleTokenSelect(token: ShiftToken) {
+    setSelectedToken((prev) => (prev === token ? null : token));
+  }
+
+  function handleDraw(suit: "sand" | "blood") {
+    onDraw(suit, selectedToken ?? undefined);
+    setSelectedToken(null);
+  }
+
+  function handleStand() {
+    onStand(selectedToken ?? undefined);
+    setSelectedToken(null);
+  }
+
   return (
     <div className="gameboard">
 
-      {/* ── Phase transition overlay ── */}
       <AnimatePresence>
         {showOverlay && (
           <PhaseOverlay
@@ -115,7 +115,6 @@ export function GameBoard({
         )}
       </AnimatePresence>
 
-      {/* ── Header ── */}
       <header className="game-header">
         <h2 className="game-header-title">Kessel Sabacc</h2>
         <HelpButton onClick={() => setShowRules(true)} />
@@ -132,7 +131,6 @@ export function GameBoard({
         </div>
       </header>
 
-      {/* ── Players bar ── */}
       <section className="players-bar">
         {state.players.map((p) => {
           const isActive = state.currentTurnPlayerId === p.id && state.phase === "turn";
@@ -169,6 +167,11 @@ export function GameBoard({
                 {p.invested > 0 && (
                   <span className="invested-badge">+{p.invested} in</span>
                 )}
+                {!isMe && p.tokensLeft > 0 && (
+                  <span className="token-count-badge">
+                    {p.tokensLeft} {p.tokensLeft === 1 ? "token" : "tokens"}
+                  </span>
+                )}
               </div>
 
               {isReveal && p.sandCard && p.bloodCard && (
@@ -182,7 +185,6 @@ export function GameBoard({
         })}
       </section>
 
-      {/* ── Phase content with animated transitions ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={phaseGroupKey()}
@@ -192,7 +194,6 @@ export function GameBoard({
           transition={{ duration: 0.25, ease: "easeInOut" }}
         >
 
-          {/* ── Lobby waiting ── */}
           {state.phase === "lobby" && (
             <section className="lobby-waiting">
               <div className="lobby-waiting-title">Waiting for players</div>
@@ -209,7 +210,6 @@ export function GameBoard({
             </section>
           )}
 
-          {/* ── Your hand ── */}
           {state.yourHand && state.phase !== "lobby" && (
             <section className="hand-section">
               <div className="hand-section-header">
@@ -238,37 +238,43 @@ export function GameBoard({
                 </div>
               </div>
 
-              {/* Actions — my turn */}
               {state.phase === "turn" && isMyTurn && (
-                <>
-                  <div className="actions-row your-turn-pulse">
-                    <button className="btn-draw-sand" onClick={() => onDraw("sand")}>
-                      Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span>
+                <div className="actions-row your-turn-pulse">
+                  <button className="btn-draw-sand" onClick={() => handleDraw("sand")}>
+                    {selectedToken
+                      ? <>Draw Sand + {TOKEN_NAMES[selectedToken]}</>
+                      : <>Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span></>
+                    }
+                  </button>
+                  <button className="btn-draw-blood" onClick={() => handleDraw("blood")}>
+                    {selectedToken
+                      ? <>Draw Blood + {TOKEN_NAMES[selectedToken]}</>
+                      : <>Draw Blood <span className="btn-chip-cost">{"\u22121 chip"}</span></>
+                    }
+                  </button>
+                  <button className="btn-stand" onClick={handleStand}>
+                    {selectedToken
+                      ? <>Stand + {TOKEN_NAMES[selectedToken]}</>
+                      : "Stand"
+                    }
+                  </button>
+                  {selectedToken && (
+                    <button className="btn-cancel-token" onClick={() => setSelectedToken(null)}>
+                      Cancel
                     </button>
-                    <button className="btn-draw-blood" onClick={() => onDraw("blood")}>
-                      Draw Blood <span className="btn-chip-cost">{"\u22121 chip"}</span>
-                    </button>
-                    <button className="btn-stand" onClick={() => onStand()}>
-                      Stand
-                    </button>
-                  </div>
-
-                  {state.yourHand.tokens.length > 0 && (
-                    <div className="tokens-section">
-                      <div className="tokens-label">Shift Tokens</div>
-                      <div className="tokens-row">
-                        {state.yourHand.tokens.map((t) => (
-                          <button key={t} className="btn-token" onClick={() => onStand(t)}>
-                            {TOKEN_LABELS[t]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   )}
-                </>
+                </div>
               )}
 
-              {/* Waiting for opponent */}
+              {state.phase === "turn" && state.yourHand.tokens.length > 0 && (
+                <TokenDisplay
+                  tokens={state.yourHand.tokens}
+                  onUseToken={isMyTurn ? handleTokenSelect : undefined}
+                  selectedToken={selectedToken}
+                  isMyTurn={isMyTurn}
+                />
+              )}
+
               {state.phase === "turn" && !isMyTurn && (
                 <div className="waiting-message">
                   Waiting for{" "}
@@ -281,7 +287,6 @@ export function GameBoard({
             </section>
           )}
 
-          {/* ── Opponents' hidden cards (during play) ── */}
           {state.phase === "turn" && (
             <section className="hand-section opponents-section">
               <div className="hand-section-header">
@@ -385,7 +390,6 @@ export function GameBoard({
             </section>
           )}
 
-          {/* ── Game over ── */}
           {state.phase === "game_over" && (
             <section className="game-over">
               <div className="game-over-label">Game Over</div>
