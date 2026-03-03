@@ -6,12 +6,15 @@ import { useGame } from "./hooks/useGame";
 import { useAvatar } from "./hooks/useAvatar";
 import { useToast } from "./hooks/useToast";
 import { useGameEvents } from "./hooks/useGameEvents";
+import { useNotificationPreferences } from "./hooks/useNotificationPreferences";
+import { useTurnNotification } from "./hooks/useTurnNotification";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { ProfilePage } from "./components/ProfilePage";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { ToastContainer } from "./components/Toast";
+import { NotificationToggle } from "./components/NotificationToggle";
 import "./App.css";
 
 function AppInner() {
@@ -41,6 +44,9 @@ function AppInner() {
   const { avatarId } = useAvatar();
   const { toasts, addToast } = useToast();
   useGameEvents(gameState, playerId, addToast);
+  const { notificationsEnabled, toggleNotifications } =
+    useNotificationPreferences();
+  useTurnNotification(gameState, playerId, notificationsEnabled);
 
   // Show loading spinner while checking stored token
   if (isLoading) {
@@ -109,6 +115,10 @@ function AppInner() {
         onDraw={draw}
         onStand={stand}
         onNextRound={nextRound}
+      />
+      <NotificationToggle
+        enabled={notificationsEnabled}
+        onToggle={toggleNotifications}
       />
       <ToastContainer toasts={toasts} />
     </>
