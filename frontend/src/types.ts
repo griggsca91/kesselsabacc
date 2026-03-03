@@ -75,9 +75,17 @@ export interface GameState {
   bloodRemaining: number;
 }
 
+export interface ChatMessage {
+  type: "chat";
+  playerId: string;
+  playerName: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface ServerEnvelope {
-  type: "game_state" | "error";
-  payload: GameState | { message: string };
+  type: "game_state" | "error" | "chat";
+  payload: GameState | { message: string } | ChatMessage;
 }
 
 export interface GameHistoryEntry {

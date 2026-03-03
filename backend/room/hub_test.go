@@ -52,7 +52,7 @@ func drainMessages(c *Client) {
 
 func TestCreateRoomReturnsValidCode(t *testing.T) {
 	h := NewHub(nil)
-	code, err := h.CreateRoom("host1", "Host")
+	code, err := h.CreateRoom("host1", "Host", false, false)
 	if err != nil {
 		t.Fatalf("CreateRoom error: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestCreateRoomReturnsValidCode(t *testing.T) {
 
 func TestCreateRoomAddsPlayerAsHost(t *testing.T) {
 	h := NewHub(nil)
-	code, err := h.CreateRoom("host1", "HostName")
+	code, err := h.CreateRoom("host1", "HostName", false)
 	if err != nil {
 		t.Fatalf("CreateRoom error: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestCreateRoomUniqueCode(t *testing.T) {
 	h := NewHub(nil)
 	codes := map[string]bool{}
 	for i := 0; i < 20; i++ {
-		code, err := h.CreateRoom("p"+string(rune('A'+i)), "Player")
+		code, err := h.CreateRoom("p"+string(rune('A'+i)), "Player", false)
 		if err != nil {
 			t.Fatalf("CreateRoom error: %v", err)
 		}
@@ -116,7 +116,7 @@ func TestCreateRoomUniqueCode(t *testing.T) {
 
 func TestJoinRoomSuccess(t *testing.T) {
 	h := NewHub(nil)
-	code, _ := h.CreateRoom("host1", "Host")
+	code, _ := h.CreateRoom("host1", "Host", false)
 
 	err := h.JoinRoom(code, "p2", "Player2")
 	if err != nil {
@@ -150,7 +150,7 @@ func TestJoinRoomNotFound(t *testing.T) {
 
 func TestJoinRoomFull(t *testing.T) {
 	h := NewHub(nil)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 
 	// Fill up to MaxPlayers
 	for i := 1; i < game.MaxPlayers; i++ {
@@ -172,7 +172,7 @@ func TestJoinRoomFull(t *testing.T) {
 
 func TestJoinRoomGameInProgress(t *testing.T) {
 	h := NewHub(nil)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -190,7 +190,7 @@ func TestJoinRoomGameInProgress(t *testing.T) {
 
 func TestJoinRoomDuplicateReconnect(t *testing.T) {
 	h := NewHub(nil)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	// Joining again with same ID should succeed (reconnect)
@@ -210,7 +210,7 @@ func TestJoinRoomDuplicateReconnect(t *testing.T) {
 
 func TestGetRoomExists(t *testing.T) {
 	h := NewHub(nil)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	room, ok := h.GetRoom(code)
 	if !ok || room == nil {
 		t.Fatal("GetRoom should find existing room")
@@ -232,7 +232,7 @@ func TestGetRoomNotFound(t *testing.T) {
 
 func TestHubRegisterClient(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 
 	c := newTestClient("host", code)
 	h.Register <- c
@@ -246,7 +246,7 @@ func TestHubRegisterClient(t *testing.T) {
 
 func TestHubUnregisterClient(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 
 	c := newTestClient("host", code)
 	h.Register <- c
@@ -280,7 +280,7 @@ func TestHubUnregisterClient(t *testing.T) {
 
 func TestHandleStartGameHostOnly(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	hostClient := newTestClient("host", code)
@@ -320,7 +320,7 @@ func TestHandleStartGameHostOnly(t *testing.T) {
 
 func TestHandleDrawAction(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -368,7 +368,7 @@ func TestHandleDrawAction(t *testing.T) {
 
 func TestHandleStandAction(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -414,7 +414,7 @@ func TestHandleStandAction(t *testing.T) {
 
 func TestHandleNextRound(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -467,7 +467,7 @@ func TestHandleNextRound(t *testing.T) {
 
 func TestHandleUnknownAction(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 
 	c := newTestClient("host", code)
 	h.Register <- c
@@ -486,7 +486,7 @@ func TestHandleUnknownAction(t *testing.T) {
 
 func TestHandleInvalidJSON(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 
 	c := newTestClient("host", code)
 	h.Register <- c
@@ -520,7 +520,7 @@ func TestHandleMessageRoomNotFound(t *testing.T) {
 
 func TestBroadcastStateHidesCardsDuringTurn(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	hostClient := newTestClient("host", code)
@@ -572,7 +572,7 @@ func TestBroadcastStateHidesCardsDuringTurn(t *testing.T) {
 
 func TestBroadcastStateShowsCardsDuringReveal(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -637,7 +637,7 @@ func TestBroadcastStateShowsCardsDuringReveal(t *testing.T) {
 
 func TestBroadcastStateShowsCardsDuringRoundEnd(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -679,7 +679,7 @@ func TestBroadcastStateShowsCardsDuringRoundEnd(t *testing.T) {
 
 func TestBroadcastStateYourHandPerPlayer(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -754,7 +754,7 @@ func TestSendError(t *testing.T) {
 
 func TestFullGameFlowTwoPlayers(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -856,7 +856,7 @@ func readWSGameState(t *testing.T, conn *websocket.Conn, timeout time.Duration) 
 
 func TestWebSocketIntegration(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	// Create a test server that acts as a WebSocket relay
@@ -945,7 +945,7 @@ func TestWebSocketIntegration(t *testing.T) {
 
 func TestBroadcastStateCurrentTurnPlayerID(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)
@@ -979,7 +979,7 @@ func TestBroadcastStateCurrentTurnPlayerID(t *testing.T) {
 
 func TestHandleDrawWrongTurn(t *testing.T) {
 	h := newTestHub(t)
-	code, _ := h.CreateRoom("host", "Host")
+	code, _ := h.CreateRoom("host", "Host", false)
 	h.JoinRoom(code, "p2", "Player2")
 
 	room, _ := h.GetRoom(code)

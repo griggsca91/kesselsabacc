@@ -2400,6 +2400,31 @@
 }
 
 /* ─────────────────────────────────────────
+   INVITE LINK BUTTON
+───────────────────────────────────────── */
+.btn-invite {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  letter-spacing: 0.03em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-invite:hover:not(:disabled) {
+  background: var(--surface2);
+  border-color: var(--border-bright);
+  color: var(--text);
+}
+
+.btn-invite.copied {
+  border-color: var(--gold-dim);
+  color: var(--gold-light);
+  background: linear-gradient(135deg, rgba(42, 32, 16, 0.6), rgba(58, 48, 24, 0.6));
+}
+
+/* ─────────────────────────────────────────
    RESPONSIVE: RULES OVERLAY
 ───────────────────────────────────────── */
 @media (max-width: 480px) {

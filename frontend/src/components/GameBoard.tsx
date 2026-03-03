@@ -11,6 +11,7 @@ import { usePhaseTransition } from "../hooks/usePhaseTransition";
 import { Avatar, avatarForPlayerId } from "./AvatarPicker";
 import { TokenDisplay } from "./TokenDisplay";
 import { TOKEN_NAMES } from "./TokenTooltip";
+import { CopyInviteButton } from "./CopyInviteButton";
 
 interface GameBoardProps {
   state: GameState;
@@ -207,6 +208,7 @@ export function GameBoard({
               ) : (
                 <p>Waiting for the host to start the game{"\u2026"}</p>
               )}
+              <CopyInviteButton roomCode={roomCode} />
             </section>
           )}
 

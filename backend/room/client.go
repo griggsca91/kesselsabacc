@@ -9,11 +9,12 @@ import (
 const sendBufferSize = 256
 
 type Client struct {
-	PlayerID string
-	RoomCode string
-	conn     *websocket.Conn
-	send     chan []byte
-	hub      *Hub
+	PlayerID    string
+	RoomCode    string
+	IsSpectator bool
+	conn        *websocket.Conn
+	send        chan []byte
+	hub         *Hub
 }
 
 func NewClient(playerID, roomCode string, conn *websocket.Conn, hub *Hub) *Client {
