@@ -226,7 +226,7 @@ export function GameBoard({
               {/* Actions — my turn */}
               {state.phase === "turn" && isMyTurn && (
                 <>
-                  <div className="actions-row">
+                  <div className="actions-row your-turn-pulse">
                     <button className="btn-draw-sand" onClick={() => onDraw("sand")}>
                       Draw Sand <span className="btn-chip-cost">{"\u22121 chip"}</span>
                     </button>

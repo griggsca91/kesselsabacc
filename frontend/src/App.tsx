@@ -9,6 +9,8 @@ import { useToast } from "./hooks/useToast";
 import { useGameEvents } from "./hooks/useGameEvents";
 import { useSoundEngine } from "./hooks/useSoundEngine";
 import { useGameSounds } from "./hooks/useGameSounds";
+import { useNotificationPreferences } from "./hooks/useNotificationPreferences";
+import { useTurnNotification } from "./hooks/useTurnNotification";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { MuteToggle } from "./components/MuteToggle";
@@ -16,6 +18,7 @@ import { ProfilePage } from "./components/ProfilePage";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { ToastContainer } from "./components/Toast";
+import { NotificationToggle } from "./components/NotificationToggle";
 import "./App.css";
 
 function AppInner() {
@@ -47,6 +50,9 @@ function AppInner() {
   const sound = useSoundEngine();
   useGameEvents(gameState, playerId, addToast);
   useGameSounds(gameState, playerId, sound);
+  const { notificationsEnabled, toggleNotifications } =
+    useNotificationPreferences();
+  useTurnNotification(gameState, playerId, notificationsEnabled);
 
   // Show loading spinner while checking stored token
   if (isLoading) {
@@ -117,6 +123,10 @@ function AppInner() {
         onNextRound={nextRound}
       />
       <MuteToggle />
+      <NotificationToggle
+        enabled={notificationsEnabled}
+        onToggle={toggleNotifications}
+      />
       <ToastContainer toasts={toasts} />
     </SoundContext.Provider>
   );
