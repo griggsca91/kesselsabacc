@@ -1860,3 +1860,38 @@
     bottom: var(--space-md);
   }
 }
+
+/* ─────────────────────────────────────────
+   TURN NOTIFICATIONS
+───────────────────────────────────────── */
+.your-turn-pulse {
+  animation: turn-pulse 2s ease-in-out infinite;
+}
+
+@keyframes turn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 180, 74, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(231, 180, 74, 0); }
+}
+
+.notification-toggle-wrapper {
+  position: fixed;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  z-index: var(--z-toast);
+}
+
+.btn-notification-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-notification-toggle:hover {
+  background: var(--surface2);
+  border-color: var(--border-bright);
+}
