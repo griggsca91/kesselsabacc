@@ -1,9 +1,12 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { GameState, HandResult, ShiftToken } from "../types";
 import { CardDisplay, CardBack } from "./CardDisplay";
 import { AnimatedCard, FlipCard, ChipCounter } from "./AnimatedCard";
 import { PhaseOverlay } from "./PhaseOverlay";
+import { RevealSequence } from "./RevealSequence";
+import { RulesOverlay } from "./RulesOverlay";
+import { HelpButton } from "./HelpButton";
 import { usePhaseTransition } from "../hooks/usePhaseTransition";
 import { Avatar, avatarForPlayerId } from "./AvatarPicker";
 
@@ -49,6 +52,17 @@ export function GameBoard({
   const me = state.players.find((p) => p.id === playerId);
   const isMyTurn = state.currentTurnPlayerId === playerId;
   const isReveal = state.phase === "reveal" || state.phase === "round_end" || state.phase === "game_over";
+
+  // Dramatic reveal sequence state
+  const [revealComplete, setRevealComplete] = useState(false);
+  useEffect(() => { setRevealComplete(false); }, [state.round]);
+  const showRevealSequence =
+    (state.phase === "reveal" || state.phase === "round_end") &&
+    state.lastResult &&
+    !revealComplete;
+
+  // Rules overlay state
+  const [showRules, setShowRules] = useState(false);
 
   // Phase transition overlay
   const winnerName =
@@ -104,6 +118,7 @@ export function GameBoard({
       {/* ── Header ── */}
       <header className="game-header">
         <h2 className="game-header-title">Kessel Sabacc</h2>
+        <HelpButton onClick={() => setShowRules(true)} />
         <div className="game-meta">
           <span className="game-meta-item">
             Room <span className="room-code-badge">{roomCode}</span>
@@ -300,8 +315,19 @@ export function GameBoard({
             </section>
           )}
 
-          {/* ── Round result ── */}
-          {(state.phase === "round_end" || state.phase === "reveal") && state.lastResult && (
+          {/* ── Dramatic reveal sequence ── */}
+          {showRevealSequence && state.lastResult && (
+            <RevealSequence
+              players={state.players}
+              playerId={playerId}
+              lastResult={state.lastResult}
+              round={state.round}
+              onComplete={() => setRevealComplete(true)}
+            />
+          )}
+
+          {/* ── Round result (after reveal sequence completes) ── */}
+          {(state.phase === "round_end" || state.phase === "reveal") && state.lastResult && revealComplete && (
             <section className="round-result">
               <div className="round-result-header">
                 <div className="round-result-title">Round {state.round} Result</div>
@@ -383,6 +409,9 @@ export function GameBoard({
           Blood {state.bloodRemaining}
         </div>
       </div>
+
+      {/* ── Rules overlay ── */}
+      <RulesOverlay isOpen={showRules} onClose={() => setShowRules(false)} />
 
     </div>
   );
