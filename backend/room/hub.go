@@ -7,7 +7,9 @@ import (
 	"log"
 	"sabacc/db"
 	"sabacc/game"
+	"strings"
 	"sync"
+	"time"
 )
 
 type IncomingMessage struct {
@@ -16,22 +18,71 @@ type IncomingMessage struct {
 }
 
 type Hub struct {
-	rooms      map[string]*Room
-	mu         sync.RWMutex
-	repo       *db.Repository // nil when running without a database
-	Register   chan *Client
-	Unregister chan *Client
-	Incoming   chan IncomingMessage
+	rooms        map[string]*Room
+	mu           sync.RWMutex
+	repo         *db.Repository // nil when running without a database
+	Register     chan *Client
+	Unregister   chan *Client
+	Incoming     chan IncomingMessage
+	matchmaker   *Matchmaker
+	matchResults map[string]string // playerID -> room code
 }
 
 func NewHub(repo *db.Repository) *Hub {
-	return &Hub{
-		rooms:      map[string]*Room{},
-		repo:       repo,
-		Register:   make(chan *Client, 16),
-		Unregister: make(chan *Client, 16),
-		Incoming:   make(chan IncomingMessage, 128),
+	h := &Hub{
+		rooms:        map[string]*Room{},
+		repo:         repo,
+		Register:     make(chan *Client, 16),
+		Unregister:   make(chan *Client, 16),
+		Incoming:     make(chan IncomingMessage, 128),
+		matchResults: map[string]string{},
 	}
+	h.matchmaker = NewMatchmaker(h)
+	go h.matchmaker.Run()
+	return h
+}
+
+// GetMatchResult returns the room code for a matched player, if available.
+func (h *Hub) GetMatchResult(playerID string) (string, bool) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	code, ok := h.matchResults[playerID]
+	return code, ok
+}
+
+// ClearMatchResult removes the match result for a player after they've consumed it.
+func (h *Hub) ClearMatchResult(playerID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.matchResults, playerID)
+}
+
+// Matchmaker returns the hub's matchmaker (for use by API handlers).
+func (h *Hub) Matchmaker() *Matchmaker {
+	return h.matchmaker
+}
+
+func (h *Hub) createMatchedRoom(players []QueueEntry) {
+	if len(players) < 2 {
+		return
+	}
+	code, err := h.CreateRoom(players[0].PlayerID, players[0].PlayerName, false)
+	if err != nil {
+		log.Printf("matchmaker: failed to create room: %v", err)
+		return
+	}
+	for _, p := range players[1:] {
+		if err := h.JoinRoom(code, p.PlayerID, p.PlayerName); err != nil {
+			log.Printf("matchmaker: failed to join player %s: %v", p.PlayerID, err)
+		}
+	}
+	// Store the code so clients can poll for it
+	h.mu.Lock()
+	for _, p := range players {
+		h.matchResults[p.PlayerID] = code
+	}
+	h.mu.Unlock()
+	log.Printf("matchmaker: created room %s with %d players", code, len(players))
 }
 
 func (h *Hub) Run() {
@@ -42,7 +93,11 @@ func (h *Hub) Run() {
 			room, ok := h.rooms[client.RoomCode]
 			h.mu.RUnlock()
 			if ok {
-				room.AddClient(client)
+				if client.IsSpectator {
+					room.AddSpectator(client)
+				} else {
+					room.AddClient(client)
+				}
 				h.broadcastState(room)
 			}
 
@@ -51,7 +106,11 @@ func (h *Hub) Run() {
 			room, ok := h.rooms[client.RoomCode]
 			h.mu.RUnlock()
 			if ok {
-				room.RemoveClient(client.PlayerID)
+				if client.IsSpectator {
+					room.RemoveSpectator(client.PlayerID)
+				} else {
+					room.RemoveClient(client.PlayerID)
+				}
 				close(client.send)
 				h.broadcastState(room)
 			}
@@ -63,7 +122,7 @@ func (h *Hub) Run() {
 }
 
 // CreateRoom creates a new room and adds the host player.
-func (h *Hub) CreateRoom(playerID, playerName string) (string, error) {
+func (h *Hub) CreateRoom(playerID, playerName string, isPublic bool) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -77,9 +136,44 @@ func (h *Hub) CreateRoom(playerID, playerName string) (string, error) {
 
 	r := NewRoom()
 	r.Code = code
+	r.IsPublic = isPublic
 	r.Game.Players = append(r.Game.Players, game.NewPlayer(playerID, playerName, game.StartingChips, true))
 	h.rooms[code] = r
 	return code, nil
+}
+
+// PublicRoomInfo is the data exposed by the room browser endpoint.
+type PublicRoomInfo struct {
+	Code        string `json:"code"`
+	PlayerCount int    `json:"playerCount"`
+	MaxPlayers  int    `json:"maxPlayers"`
+}
+
+// ListPublicRooms returns rooms that are public and still in the lobby phase.
+func (h *Hub) ListPublicRooms() []PublicRoomInfo {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	var list []PublicRoomInfo
+	for _, r := range h.rooms {
+		r.mu.RLock()
+		isPublic := r.IsPublic
+		phase := r.Game.Phase
+		playerCount := len(r.Game.Players)
+		r.mu.RUnlock()
+
+		if isPublic && phase == game.PhaseLobby {
+			list = append(list, PublicRoomInfo{
+				Code:        r.Code,
+				PlayerCount: playerCount,
+				MaxPlayers:  game.MaxPlayers,
+			})
+		}
+	}
+	if list == nil {
+		list = []PublicRoomInfo{}
+	}
+	return list
 }
 
 // JoinRoom adds a player to an existing room.
@@ -114,6 +208,20 @@ func (h *Hub) GetRoom(code string) (*Room, bool) {
 	defer h.mu.RUnlock()
 	r, ok := h.rooms[code]
 	return r, ok
+}
+
+// JoinAsSpectator registers a spectator in an existing room without adding them as a player.
+func (h *Hub) JoinAsSpectator(code, playerID, playerName string) error {
+	h.mu.RLock()
+	_, ok := h.rooms[code]
+	h.mu.RUnlock()
+	if !ok {
+		return errors.New("room not found")
+	}
+	// Spectators are allowed regardless of game phase — store the name for display purposes
+	// but do NOT add them to the game's player list.
+	_ = playerName
+	return nil
 }
 
 // --- Message handling ---
@@ -156,6 +264,12 @@ func (h *Hub) handleMessage(c *Client, data []byte) {
 		err = h.handleStand(c, room, action.Payload)
 	case "next_round":
 		err = h.handleNextRound(c, room)
+	case "chat":
+		err = h.handleChat(c, room, action.Payload)
+		if err != nil {
+			h.sendError(c, err.Error())
+		}
+		return // chat does not trigger a game state broadcast
 	default:
 		err = errors.New("unknown action: " + action.Type)
 	}
@@ -219,6 +333,82 @@ func (h *Hub) handleNextRound(c *Client, room *Room) error {
 	return room.Game.NextRound()
 }
 
+// --- Chat ---
+
+type ChatPayload struct {
+	Text string `json:"text"`
+}
+
+type ChatMessage struct {
+	Type       string `json:"type"` // "chat"
+	PlayerID   string `json:"playerId"`
+	PlayerName string `json:"playerName"`
+	Text       string `json:"text"`
+	Timestamp  int64  `json:"timestamp"` // unix ms
+}
+
+func (h *Hub) handleChat(c *Client, room *Room, payload json.RawMessage) error {
+	var p ChatPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return errors.New("invalid chat payload")
+	}
+
+	text := strings.TrimSpace(p.Text)
+	if text == "" {
+		return errors.New("empty message")
+	}
+	if len([]rune(text)) > 200 {
+		runes := []rune(text)
+		text = string(runes[:200])
+	}
+
+	// Rate limiting: max 3 messages per 5 seconds per player
+	now := time.Now().UnixMilli()
+	windowStart := now - 5000
+	timestamps := room.ChatTimestamps[c.PlayerID]
+	// Filter to only timestamps within the window
+	filtered := timestamps[:0]
+	for _, ts := range timestamps {
+		if ts >= windowStart {
+			filtered = append(filtered, ts)
+		}
+	}
+	if len(filtered) >= 3 {
+		return errors.New("sending too fast — slow down")
+	}
+	room.ChatTimestamps[c.PlayerID] = append(filtered, now)
+
+	// Find player name
+	player := room.Game.PlayerByID(c.PlayerID)
+	name := c.PlayerID // fallback
+	if player != nil {
+		name = player.Name
+	}
+
+	msg := ChatMessage{
+		Type:       "chat",
+		PlayerID:   c.PlayerID,
+		PlayerName: name,
+		Text:       text,
+		Timestamp:  now,
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return errors.New("internal error")
+	}
+
+	// Broadcast to all clients and spectators in the room (lock already held as read lock for clients map access via Broadcast)
+	// We hold room.mu.Lock() here, so we must send directly to avoid deadlock with Broadcast's RLock.
+	for _, client := range room.Clients {
+		client.Send(data)
+	}
+	for _, client := range room.Spectators {
+		client.Send(data)
+	}
+	return nil
+}
+
 // --- State broadcasting ---
 
 // GameStateView is the sanitized game state sent to each player.
@@ -234,6 +424,7 @@ type GameStateView struct {
 	WinnerID            string            `json:"winnerId"`
 	SandRemaining       int               `json:"sandRemaining"`
 	BloodRemaining      int               `json:"bloodRemaining"`
+	SpectatorCount      int               `json:"spectatorCount"`
 }
 
 type PlayerView struct {
@@ -297,6 +488,8 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 		playerViews[i] = pv
 	}
 
+	spectatorCount := len(room.Spectators)
+
 	for playerID, client := range room.Clients {
 		player := g.PlayerByID(playerID)
 		var hand *HandView
@@ -319,6 +512,7 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 			WinnerID:            g.WinnerID,
 			SandRemaining:       g.SandDeck.Remaining(),
 			BloodRemaining:      g.BloodDeck.Remaining(),
+			SpectatorCount:      spectatorCount,
 		}
 
 		msg, err := json.Marshal(Envelope{Type: "game_state", Payload: view})
@@ -327,6 +521,29 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 			continue
 		}
 		client.Send(msg)
+	}
+
+	// Spectator view — same state but no hand info (spectators never see hands)
+	spectatorView := GameStateView{
+		Phase:               g.Phase,
+		Round:               g.Round,
+		TurnInRound:         g.TurnInRound,
+		CurrentTurnPlayerID: currentTurnID,
+		Players:             playerViews,
+		YourHand:            nil,
+		LastResult:          g.LastResult,
+		WinnerID:            g.WinnerID,
+		SandRemaining:       g.SandDeck.Remaining(),
+		BloodRemaining:      g.BloodDeck.Remaining(),
+		SpectatorCount:      spectatorCount,
+	}
+	spectatorMsg, sErr := json.Marshal(Envelope{Type: "game_state", Payload: spectatorView})
+	if sErr != nil {
+		log.Printf("spectator marshal error: %v", sErr)
+	} else {
+		for _, sc := range room.Spectators {
+			sc.Send(spectatorMsg)
+		}
 	}
 }
 

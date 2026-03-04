@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CardSuit,
+  ChatMessage,
   ConnectionStatus,
   GameState,
   ServerEnvelope,
@@ -23,6 +24,7 @@ interface UseGameOptions {
 
 interface UseGameReturn {
   gameState: GameState | null;
+  chatMessages: ChatMessage[];
   error: string | null;
   connectionStatus: ConnectionStatus;
   playerId: string;
@@ -34,6 +36,7 @@ interface UseGameReturn {
   draw: (suit: CardSuit, token?: ShiftToken) => void;
   stand: (token?: ShiftToken) => void;
   nextRound: () => void;
+  sendChat: (text: string) => void;
   reconnect: () => void;
 }
 
@@ -65,6 +68,7 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
   const authToken = opts.token ?? null;
 
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("disconnected");
@@ -165,6 +169,12 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
           } else if (envelope.type === "error") {
             const msg = (envelope.payload as { message: string }).message;
             setError(friendlyErrorMessage(msg));
+          } else if (envelope.type === "chat") {
+            const chatMsg = envelope.payload as ChatMessage;
+            setChatMessages((prev) => {
+              const next = [...prev, chatMsg];
+              return next.length > 100 ? next.slice(next.length - 100) : next;
+            });
           }
         } catch {
           setError("Received an unexpected message from the server.");
@@ -276,8 +286,14 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
 
   const nextRound = useCallback(() => send("next_round", {}), [send]);
 
+  const sendChat = useCallback(
+    (text: string) => send("chat", { text }),
+    [send]
+  );
+
   return {
     gameState,
+    chatMessages,
     error,
     connectionStatus,
     playerId,
@@ -289,6 +305,7 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
     draw,
     stand,
     nextRound,
+    sendChat,
     reconnect,
   };
 }

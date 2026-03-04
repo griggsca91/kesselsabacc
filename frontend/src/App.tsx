@@ -11,6 +11,7 @@ import { useSoundEngine } from "./hooks/useSoundEngine";
 import { useGameSounds } from "./hooks/useGameSounds";
 import { useNotificationPreferences } from "./hooks/useNotificationPreferences";
 import { useTurnNotification } from "./hooks/useTurnNotification";
+import { useInviteCode } from "./hooks/useInviteCode";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
 import { MuteToggle } from "./components/MuteToggle";
@@ -25,6 +26,7 @@ function AppInner() {
   const { user, token, isLoading, logout } = useAuth();
   const [guestMode, setGuestMode] = useState(false);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const inviteCode = useInviteCode();
 
   const {
     gameState,
@@ -103,6 +105,7 @@ function AppInner() {
             setGuestMode(false);
           }}
           onViewProfile={(id) => setProfileUserId(id)}
+          inviteCode={inviteCode ?? undefined}
         />
       </>
     );

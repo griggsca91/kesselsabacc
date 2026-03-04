@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GameHistory } from "./GameHistory";
 import { AvatarPicker, AVATARS } from "./AvatarPicker";
 import { useAvatar } from "../hooks/useAvatar";
+import { QuickMatch } from "./QuickMatch";
 
 interface LobbyProps {
   onCreateRoom: (name: string) => Promise<void>;
@@ -13,6 +14,8 @@ interface LobbyProps {
   onLogout?: () => void;
   /** Callback to view a player's profile. */
   onViewProfile?: (userId: string) => void;
+  /** Pre-filled room code from an invite link. */
+  inviteCode?: string;
 }
 
 export function Lobby({
@@ -24,10 +27,11 @@ export function Lobby({
   token,
   onLogout,
   onViewProfile,
+  inviteCode,
 }: LobbyProps) {
   const [name, setName] = useState(displayName ?? "");
-  const [joinCode, setJoinCode] = useState("");
-  const [mode, setMode] = useState<"home" | "create" | "join">("home");
+  const [joinCode, setJoinCode] = useState(inviteCode ?? "");
+  const [mode, setMode] = useState<"home" | "create" | "join">(inviteCode ? "join" : "home");
   const [loading, setLoading] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showHistory, setShowHistory] = useState(false);

@@ -29,10 +29,17 @@ func NewHandler(hub *room.Hub, repo *db.Repository, authSvc *auth.AuthService) *
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /rooms", h.CreateRoom)
 	mux.HandleFunc("POST /rooms/{code}/join", h.JoinRoom)
+	mux.HandleFunc("POST /rooms/{code}/spectate", h.SpectateRoom)
+	mux.HandleFunc("GET /api/rooms", h.ListRooms)
 	mux.HandleFunc("GET /api/games", h.GetGameHistory)
 	mux.HandleFunc("GET /api/profile/{id}", h.GetProfileByID)
 	mux.HandleFunc("GET /api/profile", h.GetProfile)
 	mux.HandleFunc("GET /ws", h.WebSocket)
+
+	// Matchmaking routes
+	mux.HandleFunc("POST /api/queue", h.EnqueuePlayer)
+	mux.HandleFunc("DELETE /api/queue", h.DequeuePlayer)
+	mux.HandleFunc("GET /api/queue/result", h.GetMatchResult)
 
 	// Auth routes — only registered when auth is available
 	if h.Auth != nil {
@@ -47,6 +54,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 type CreateRoomRequest struct {
 	PlayerID   string `json:"playerId"`
 	PlayerName string `json:"playerName"`
+	IsPublic   bool   `json:"isPublic"`
 }
 
 type CreateRoomResponse struct {
@@ -65,7 +73,7 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		req.PlayerID = userID
 	}
 
-	code, err := h.Hub.CreateRoom(req.PlayerID, req.PlayerName)
+	code, err := h.Hub.CreateRoom(req.PlayerID, req.PlayerName, req.IsPublic)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -73,6 +81,12 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CreateRoomResponse{Code: code})
+}
+
+func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
+	rooms := h.Hub.ListPublicRooms()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(rooms)
 }
 
 type JoinRoomRequest struct {
@@ -94,6 +108,32 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.Hub.JoinRoom(code, req.PlayerID, req.PlayerName); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+type SpectateRoomRequest struct {
+	PlayerID   string `json:"playerId"`
+	PlayerName string `json:"playerName"`
+}
+
+func (h *Handler) SpectateRoom(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+	var req SpectateRoomRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" || req.PlayerName == "" {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// If an auth token is present, use the authenticated user's ID as the player ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		req.PlayerID = userID
+	}
+
+	if err := h.Hub.JoinAsSpectator(code, req.PlayerID, req.PlayerName); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -226,12 +266,16 @@ func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	isSpectator := r.URL.Query().Get("spectator") == "true"
+
 	rm, ok := h.Hub.GetRoom(roomCode)
 	if !ok {
 		http.Error(w, "room not found", http.StatusNotFound)
 		return
 	}
-	if rm.Game.PlayerByID(playerID) == nil {
+
+	// Spectators don't need to be in the player list; players must be.
+	if !isSpectator && rm.Game.PlayerByID(playerID) == nil {
 		http.Error(w, "player not in room", http.StatusForbidden)
 		return
 	}
@@ -242,6 +286,7 @@ func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := room.NewClient(playerID, roomCode, conn, h.Hub)
+	client.IsSpectator = isSpectator
 	h.Hub.Register <- client
 
 	go client.WritePump()
@@ -362,4 +407,75 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+// ── Matchmaking handlers ──
+
+type QueueRequest struct {
+	PlayerID   string `json:"playerId"`
+	PlayerName string `json:"playerName"`
+}
+
+func (h *Handler) EnqueuePlayer(w http.ResponseWriter, r *http.Request) {
+	var req QueueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" || req.PlayerName == "" {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// If an auth token is present, use the authenticated user's ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		req.PlayerID = userID
+	}
+
+	queued := h.Hub.Matchmaker().Enqueue(req.PlayerID, req.PlayerName)
+	w.Header().Set("Content-Type", "application/json")
+	if queued {
+		json.NewEncoder(w).Encode(map[string]any{"queued": true})
+	} else {
+		json.NewEncoder(w).Encode(map[string]any{"queued": false, "reason": "already queued"})
+	}
+}
+
+type DequeueRequest struct {
+	PlayerID string `json:"playerId"`
+}
+
+func (h *Handler) DequeuePlayer(w http.ResponseWriter, r *http.Request) {
+	var req DequeueRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// If an auth token is present, use the authenticated user's ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		req.PlayerID = userID
+	}
+
+	h.Hub.Matchmaker().Dequeue(req.PlayerID)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetMatchResult(w http.ResponseWriter, r *http.Request) {
+	playerID := r.URL.Query().Get("playerId")
+
+	// If an auth token is present, use the authenticated user's ID.
+	if userID := h.authenticatedUserID(r); userID != "" {
+		playerID = userID
+	}
+
+	if playerID == "" {
+		http.Error(w, "playerId query parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	code, ok := h.Hub.GetMatchResult(playerID)
+	if ok {
+		h.Hub.ClearMatchResult(playerID)
+		json.NewEncoder(w).Encode(map[string]any{"matched": true, "roomCode": code})
+	} else {
+		json.NewEncoder(w).Encode(map[string]any{"matched": false})
+	}
 }

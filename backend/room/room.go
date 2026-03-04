@@ -17,17 +17,22 @@ func generateCode() string {
 }
 
 type Room struct {
-	Code        string
-	Game        *game.Game
-	Clients     map[string]*Client // playerID -> client
-	ResultSaved bool               // true once game_over results have been persisted
-	mu          sync.RWMutex
+	Code           string
+	Game           *game.Game
+	Clients        map[string]*Client // playerID -> client (players only)
+	Spectators     map[string]*Client // playerID -> client (spectators only)
+	ResultSaved    bool               // true once game_over results have been persisted
+	IsPublic       bool
+	ChatTimestamps map[string][]int64 // playerID -> recent message unix-ms timestamps
+	mu             sync.RWMutex
 }
 
 func NewRoom() *Room {
 	return &Room{
-		Game:    game.NewGame(),
-		Clients: map[string]*Client{},
+		Game:           game.NewGame(),
+		Clients:        map[string]*Client{},
+		Spectators:     map[string]*Client{},
+		ChatTimestamps: map[string][]int64{},
 	}
 }
 
@@ -43,10 +48,25 @@ func (r *Room) RemoveClient(playerID string) {
 	delete(r.Clients, playerID)
 }
 
+func (r *Room) AddSpectator(c *Client) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Spectators[c.PlayerID] = c
+}
+
+func (r *Room) RemoveSpectator(playerID string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.Spectators, playerID)
+}
+
 func (r *Room) Broadcast(msg []byte) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, c := range r.Clients {
+		c.Send(msg)
+	}
+	for _, c := range r.Spectators {
 		c.Send(msg)
 	}
 }
