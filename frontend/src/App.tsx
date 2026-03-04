@@ -14,6 +14,7 @@ import { useTurnNotification } from "./hooks/useTurnNotification";
 import { useInviteCode } from "./hooks/useInviteCode";
 import { Lobby } from "./components/Lobby";
 import { GameBoard } from "./components/GameBoard";
+import { ChatPanel } from "./components/ChatPanel";
 import { MuteToggle } from "./components/MuteToggle";
 import { ProfilePage } from "./components/ProfilePage";
 import { ConnectionBanner } from "./components/ConnectionBanner";
@@ -30,17 +31,21 @@ function AppInner() {
 
   const {
     gameState,
+    chatMessages,
     error,
     clearError,
     connectionStatus,
     playerId,
     roomCode,
+    isSpectator,
     createRoom,
     joinRoom,
+    joinAsSpectator,
     startGame,
     draw,
     stand,
     nextRound,
+    sendChat,
     reconnect,
   } = useGame({
     playerId: user?.id,
@@ -96,6 +101,7 @@ function AppInner() {
         <Lobby
           onCreateRoom={createRoom}
           onJoinRoom={joinRoom}
+          onSpectateRoom={joinAsSpectator}
           playerId={playerId}
           displayName={user?.displayName}
           isAuthenticated={!!user}
@@ -120,10 +126,16 @@ function AppInner() {
         playerId={playerId}
         roomCode={roomCode}
         avatarId={avatarId}
+        isSpectator={isSpectator}
         onStartGame={startGame}
         onDraw={draw}
         onStand={stand}
         onNextRound={nextRound}
+      />
+      <ChatPanel
+        messages={chatMessages}
+        onSend={sendChat}
+        playerId={playerId}
       />
       <MuteToggle />
       <NotificationToggle
