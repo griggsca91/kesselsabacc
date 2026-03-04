@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"sabacc/db"
 	"sabacc/game"
 	"strings"
@@ -68,12 +68,12 @@ func (h *Hub) createMatchedRoom(players []QueueEntry) {
 	}
 	code, err := h.CreateRoom(players[0].PlayerID, players[0].PlayerName, false)
 	if err != nil {
-		log.Printf("matchmaker: failed to create room: %v", err)
+		slog.Error("matchmaker: failed to create room", "error", err)
 		return
 	}
 	for _, p := range players[1:] {
 		if err := h.JoinRoom(code, p.PlayerID, p.PlayerName); err != nil {
-			log.Printf("matchmaker: failed to join player %s: %v", p.PlayerID, err)
+			slog.Error("matchmaker: failed to join player", "playerID", p.PlayerID, "error", err)
 		}
 	}
 	// Store the code so clients can poll for it
@@ -82,7 +82,7 @@ func (h *Hub) createMatchedRoom(players []QueueEntry) {
 		h.matchResults[p.PlayerID] = code
 	}
 	h.mu.Unlock()
-	log.Printf("matchmaker: created room %s with %d players", code, len(players))
+	slog.Info("matchmaker: created room", "code", code, "players", len(players))
 }
 
 func (h *Hub) Run() {
@@ -253,6 +253,8 @@ func (h *Hub) handleMessage(c *Client, data []byte) {
 
 	room.mu.Lock()
 	defer room.mu.Unlock()
+
+	room.LastActive = time.Now()
 
 	var err error
 	switch action.Type {
@@ -517,7 +519,7 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 
 		msg, err := json.Marshal(Envelope{Type: "game_state", Payload: view})
 		if err != nil {
-			log.Printf("marshal error: %v", err)
+			slog.Error("marshal error", "error", err)
 			continue
 		}
 		client.Send(msg)
@@ -539,7 +541,7 @@ func (h *Hub) broadcastStateUnlocked(room *Room) {
 	}
 	spectatorMsg, sErr := json.Marshal(Envelope{Type: "game_state", Payload: spectatorView})
 	if sErr != nil {
-		log.Printf("spectator marshal error: %v", sErr)
+		slog.Error("spectator marshal error", "error", sErr)
 	} else {
 		for _, sc := range room.Spectators {
 			sc.Send(spectatorMsg)
@@ -555,7 +557,7 @@ func (h *Hub) persistGameResult(room *Room) {
 	// Create the game record
 	gameID, err := h.repo.SaveGameState(ctx, room.Code, g.Round, string(g.Phase), nil)
 	if err != nil {
-		log.Printf("failed to save game state: %v", err)
+		slog.Error("failed to save game state", "error", err)
 		return
 	}
 
@@ -578,7 +580,7 @@ func (h *Hub) persistGameResult(room *Room) {
 	}
 
 	if err := h.repo.RecordGameResult(ctx, gameID, results); err != nil {
-		log.Printf("failed to record game result: %v", err)
+		slog.Error("failed to record game result", "error", err)
 	}
 }
 

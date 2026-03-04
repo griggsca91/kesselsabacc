@@ -8,6 +8,7 @@ import (
 	"sabacc/db"
 	"sabacc/room"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -27,9 +28,10 @@ func NewHandler(hub *room.Hub, repo *db.Repository, authSvc *auth.AuthService) *
 }
 
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /rooms", h.CreateRoom)
-	mux.HandleFunc("POST /rooms/{code}/join", h.JoinRoom)
-	mux.HandleFunc("POST /rooms/{code}/spectate", h.SpectateRoom)
+	mux.HandleFunc("GET /health", h.Health)
+	mux.HandleFunc("POST /rooms", RateLimitMiddleware(roomCreateLimiter, h.CreateRoom))
+	mux.HandleFunc("POST /rooms/{code}/join", RateLimitMiddleware(joinLimiter, h.JoinRoom))
+	mux.HandleFunc("POST /rooms/{code}/spectate", RateLimitMiddleware(joinLimiter, h.SpectateRoom))
 	mux.HandleFunc("GET /api/rooms", h.ListRooms)
 	mux.HandleFunc("GET /api/games", h.GetGameHistory)
 	mux.HandleFunc("GET /api/profile/{id}", h.GetProfileByID)
@@ -455,6 +457,16 @@ func (h *Handler) DequeuePlayer(w http.ResponseWriter, r *http.Request) {
 
 	h.Hub.Matchmaker().Dequeue(req.PlayerID)
 	w.WriteHeader(http.StatusOK)
+}
+
+// Health returns a simple liveness/readiness check.
+func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"status": "ok",
+		"time":   time.Now().UTC().Format(time.RFC3339),
+		"db":     h.Repo != nil,
+	})
 }
 
 func (h *Handler) GetMatchResult(w http.ResponseWriter, r *http.Request) {

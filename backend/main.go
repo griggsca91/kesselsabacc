@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sabacc/api"
@@ -19,27 +19,30 @@ func main() {
 	if databaseURL != "" {
 		conn, err := db.Connect(databaseURL)
 		if err != nil {
-			log.Fatalf("Failed to connect to database: %v", err)
+			slog.Error("Failed to connect to database", "error", err)
+			os.Exit(1)
 		}
 		defer conn.Close()
 
 		if err := db.RunMigrations(conn); err != nil {
-			log.Fatalf("Failed to run migrations: %v", err)
+			slog.Error("Failed to run migrations", "error", err)
+			os.Exit(1)
 		}
 
 		repo = db.NewRepository(conn)
-		log.Println("Database initialized successfully")
+		slog.Info("Database initialized successfully")
 
 		// Auth service requires a database
 		adapter := auth.NewDBAdapter(repo)
 		authSvc = auth.NewAuthService(adapter)
-		log.Println("Auth service initialized")
+		slog.Info("Auth service initialized")
 	} else {
-		log.Println("WARNING: DATABASE_URL not set — running without database persistence or auth")
+		slog.Warn("DATABASE_URL not set — running without database persistence or auth")
 	}
 
 	hub := room.NewHub(repo)
 	go hub.Run()
+	hub.StartCleanup()
 
 	handler := api.NewHandler(hub, repo, authSvc)
 	mux := http.NewServeMux()
@@ -57,7 +60,7 @@ func main() {
 			}
 			staticFS.ServeHTTP(w, r)
 		})
-		log.Println("Serving static files from ./static")
+		slog.Info("Serving static files from ./static")
 	}
 
 	// CORS middleware for local dev
@@ -80,8 +83,9 @@ func main() {
 	}
 
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Backend running on %s", addr)
-	if err := http.ListenAndServe(addr, corsMiddleware(mux)); err != nil {
-		log.Fatal(err)
+	slog.Info("Backend running", "addr", addr)
+	if err := http.ListenAndServe(addr, api.RequestIDMiddleware(corsMiddleware(mux))); err != nil {
+		slog.Error("Server failed", "error", err)
+		os.Exit(1)
 	}
 }
