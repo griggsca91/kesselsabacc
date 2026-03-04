@@ -18,6 +18,7 @@ interface GameBoardProps {
   playerId: string;
   roomCode: string;
   avatarId?: string;
+  isSpectator?: boolean;
   onStartGame: () => void;
   onDraw: (suit: "sand" | "blood", token?: ShiftToken) => void;
   onStand: (token?: ShiftToken) => void;
@@ -35,6 +36,7 @@ export function GameBoard({
   playerId,
   roomCode,
   avatarId,
+  isSpectator = false,
   onStartGame,
   onDraw,
   onStand,
@@ -120,6 +122,9 @@ export function GameBoard({
         <h2 className="game-header-title">Kessel Sabacc</h2>
         <HelpButton onClick={() => setShowRules(true)} />
         <div className="game-meta">
+          {isSpectator && (
+            <span className="spectator-badge">👁 Spectating</span>
+          )}
           <span className="game-meta-item">
             Room <span className="room-code-badge">{roomCode}</span>
           </span>
@@ -212,7 +217,7 @@ export function GameBoard({
             </section>
           )}
 
-          {state.yourHand && state.phase !== "lobby" && (
+          {state.yourHand && state.phase !== "lobby" && !isSpectator && (
             <section className="hand-section">
               <div className="hand-section-header">
                 <div className="hand-section-title">Your Hand</div>

@@ -29,9 +29,11 @@ interface UseGameReturn {
   connectionStatus: ConnectionStatus;
   playerId: string;
   roomCode: string;
+  isSpectator: boolean;
   clearError: () => void;
-  createRoom: (name: string) => Promise<void>;
+  createRoom: (name: string, isPublic?: boolean) => Promise<void>;
   joinRoom: (code: string, name: string) => Promise<void>;
+  joinAsSpectator: (code: string, name: string) => Promise<void>;
   startGame: () => void;
   draw: (suit: CardSuit, token?: ShiftToken) => void;
   stand: (token?: ShiftToken) => void;
@@ -73,6 +75,7 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatus>("disconnected");
   const [roomCode, setRoomCode] = useState("");
+  const [isSpectator, setIsSpectator] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,7 +124,7 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
   );
 
   const connectWs = useCallback(
-    (code: string) => {
+    (code: string, spectator = false) => {
       // Close any existing connection
       if (wsRef.current) {
         // Prevent the onclose handler from triggering reconnect for this close
@@ -133,6 +136,9 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
       let url = `${WS}/ws?playerId=${playerId}&roomCode=${code}`;
       if (authToken) {
         url += `&token=${encodeURIComponent(authToken)}`;
+      }
+      if (spectator) {
+        url += `&spectator=true`;
       }
 
       const ws = new WebSocket(url);
@@ -221,12 +227,12 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
   }, [authToken]);
 
   const createRoom = useCallback(
-    async (name: string) => {
+    async (name: string, isPublic = false) => {
       try {
         const res = await fetch(`${API}/rooms`, {
           method: "POST",
           headers: headers(),
-          body: JSON.stringify({ playerId, playerName: name }),
+          body: JSON.stringify({ playerId, playerName: name, isPublic }),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -234,6 +240,7 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
           return;
         }
         const { code } = await res.json();
+        setIsSpectator(false);
         setRoomCode(code);
         roomCodeRef.current = code;
         manualDisconnectRef.current = false;
@@ -259,10 +266,37 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
           return;
         }
         const upper = code.toUpperCase();
+        setIsSpectator(false);
         setRoomCode(upper);
         roomCodeRef.current = upper;
         manualDisconnectRef.current = false;
         connectWs(upper);
+      } catch {
+        setError("Unable to connect to server. Please check your connection.");
+      }
+    },
+    [playerId, headers, connectWs]
+  );
+
+  const joinAsSpectator = useCallback(
+    async (code: string, name: string) => {
+      try {
+        const res = await fetch(`${API}/rooms/${code}/spectate`, {
+          method: "POST",
+          headers: headers(),
+          body: JSON.stringify({ playerId, playerName: name }),
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          setError(friendlyErrorMessage(text));
+          return;
+        }
+        const upper = code.toUpperCase();
+        setIsSpectator(true);
+        setRoomCode(upper);
+        roomCodeRef.current = upper;
+        manualDisconnectRef.current = false;
+        connectWs(upper, true);
       } catch {
         setError("Unable to connect to server. Please check your connection.");
       }
@@ -298,9 +332,11 @@ export function useGame(opts: UseGameOptions = {}): UseGameReturn {
     connectionStatus,
     playerId,
     roomCode,
+    isSpectator,
     clearError,
     createRoom,
     joinRoom,
+    joinAsSpectator,
     startGame,
     draw,
     stand,
