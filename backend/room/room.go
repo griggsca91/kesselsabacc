@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"sabacc/game"
 	"sync"
+	"time"
 )
 
 const codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -24,6 +25,7 @@ type Room struct {
 	ResultSaved    bool               // true once game_over results have been persisted
 	IsPublic       bool
 	ChatTimestamps map[string][]int64 // playerID -> recent message unix-ms timestamps
+	LastActive     time.Time          // updated on any client activity; used by cleanup
 	mu             sync.RWMutex
 }
 
@@ -33,6 +35,7 @@ func NewRoom() *Room {
 		Clients:        map[string]*Client{},
 		Spectators:     map[string]*Client{},
 		ChatTimestamps: map[string][]int64{},
+		LastActive:     time.Now(),
 	}
 }
 
@@ -40,24 +43,28 @@ func (r *Room) AddClient(c *Client) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Clients[c.PlayerID] = c
+	r.LastActive = time.Now()
 }
 
 func (r *Room) RemoveClient(playerID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.Clients, playerID)
+	r.LastActive = time.Now()
 }
 
 func (r *Room) AddSpectator(c *Client) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.Spectators[c.PlayerID] = c
+	r.LastActive = time.Now()
 }
 
 func (r *Room) RemoveSpectator(playerID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.Spectators, playerID)
+	r.LastActive = time.Now()
 }
 
 func (r *Room) Broadcast(msg []byte) {
